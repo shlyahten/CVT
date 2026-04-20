@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,13 +37,20 @@ import ru.shlyahten.cvt.ui.MainViewModel
 import ru.shlyahten.cvt.ui.theme.CVTTheme
 
 class MainActivity : ComponentActivity() {
-    private val requestBtConnectPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            // ViewModel will also be updated inside composition.
+    private lateinit var vm: MainViewModel
+
+    private val requestBluetoothPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val allGranted = permissions.values.all { it }
+            vm.setHasConnectPermission(allGranted)
+            if (allGranted) {
+                vm.refreshBondedDevices(this)
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
         enableEdgeToEdge()
         setContent {
             CVTTheme {
@@ -50,9 +58,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     requestBtPermission = {
                         if (Build.VERSION.SDK_INT >= 31) {
-                            requestBtConnectPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                            requestBluetoothPermissions.launch(
+                                arrayOf(
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                    Manifest.permission.BLUETOOTH_SCAN
+                                )
+                            )
                         }
                     },
+                    vm = vm
                 )
             }
         }
@@ -75,7 +89,8 @@ fun MainScreen(
         val granted = if (Build.VERSION.SDK_INT < 31) {
             true
         } else {
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
         }
         vm.setHasConnectPermission(granted)
         vm.refreshBondedDevices(ctx)
