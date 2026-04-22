@@ -1,39 +1,27 @@
 ```
-# Compiled and build artifacts
-*.class
-*.o
-*.obj
-*.out
-*.dll
-*.so
-*.a
-*.exe
-
-# Dependencies
+# Gradle
 .gradle/
 build/
-target/
-**/bin/
-**/gen/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-
-# Editors
+# IDE
 .idea/
+*.iml
+*.ipr
+*.iws
 .vscode/
+
+# Logs
+*.log
 
 # Environment
 .env
 .env.local
-*.env.*
+*.env*
 
-# Coverage reports
-coverage/
-htmlcov/
-*.coverage
+# Dependencies
+node_modules/
+vendor/
 
 # OS generated files
 .DS_Store
