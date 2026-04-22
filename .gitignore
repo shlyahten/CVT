@@ -3,10 +3,9 @@
 *.class
 *.o
 *.obj
-*.exe
-*.dll
 *.so
-*.a
+*.dll
+*.exe
 *.out
 build/
 target/
@@ -21,22 +20,25 @@ __pycache__/
 .pytest_cache/
 dist/
 
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
 # Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs and temp files
-*.log
-*.tmp
-
-# System files
+# System
 .DS_Store
 Thumbs.db
-.env
-.env.local
-*.env.*
 
 # Coverage
 coverage/

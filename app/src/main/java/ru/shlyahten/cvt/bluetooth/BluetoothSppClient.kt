@@ -32,6 +32,7 @@ class BluetoothSppClient(
         return a.bondedDevices?.toList().orEmpty()
     }
 
+    @SuppressLint("MissingPermission")
     fun connect(device: BluetoothDevice, uuid: UUID = SPP_UUID): Connection {
         val a = adapter ?: error("BluetoothAdapter is null")
         a.cancelDiscovery()
