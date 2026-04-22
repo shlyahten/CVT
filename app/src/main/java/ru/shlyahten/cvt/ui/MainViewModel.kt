@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,9 @@ data class UiState(
 enum class CvtTempFormula { Temp1, Temp2 }
 
 class MainViewModel : ViewModel() {
+    companion object {
+        private const val TAG = "MainViewModel"
+    }
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state
 
@@ -82,16 +86,27 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
+                    Log.d(TAG, "=== Starting Bluetooth connection ===")
                     val adapter = BluetoothAdapter.getDefaultAdapter()
+                    Log.d(TAG, "BluetoothAdapter: $adapter")
                     val device = adapter.getRemoteDevice(address)
+                    Log.d(TAG, "Remote device: ${device.name} ($address)")
                     val client = BluetoothSppClient(adapter)
+                    Log.d(TAG, "Connecting to device...")
                     val conn = client.connect(device)
+                    Log.d(TAG, "Bluetooth connection established")
                     connection = conn
-                    session = Elm327Session(conn.input, conn.output).also { it.initialize(headerHex = "7E1") }
+                    Log.d(TAG, "Initializing ELM327 session...")
+                    session = Elm327Session(conn.input, conn.output).also { 
+                        Log.d(TAG, "Created Elm327Session, calling initialize()")
+                        it.initialize(headerHex = "7E1") 
+                        Log.d(TAG, "Elm327Session initialized successfully")
+                    }
                 }
                 _state.update { it.copy(isConnecting = false, isConnected = true, status = "Connected") }
                 startPolling()
             } catch (t: Throwable) {
+                Log.e(TAG, "Connection failed: ${t.message}", t)
                 disconnect()
                 _state.update { it.copy(isConnecting = false, isConnected = false, status = "Connect error: ${t.message}") }
             }
