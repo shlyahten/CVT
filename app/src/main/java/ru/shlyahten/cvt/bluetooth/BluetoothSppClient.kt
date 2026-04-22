@@ -1,5 +1,6 @@
 package ru.shlyahten.cvt.bluetooth
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
@@ -25,6 +26,7 @@ class BluetoothSppClient(
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun getBondedDevices(): List<BluetoothDevice> {
         val a = adapter ?: return emptyList()
         return a.bondedDevices?.toList().orEmpty()
