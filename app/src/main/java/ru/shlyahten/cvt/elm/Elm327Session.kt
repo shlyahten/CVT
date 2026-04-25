@@ -65,12 +65,17 @@ class Elm327Session(
         val r = send(command, timeoutMs)
         val n = r.response.normalized.uppercase()
         Log.d(TAG, "Normalized response: '$n'")
-        if (!(n == "OK" || n.endsWith(" OK"))) {
+
+        // ATZ (Reset) returns the firmware version instead of "OK"
+        val isAtz = command.trim().uppercase() == "ATZ"
+        val isOk = n == "OK" || n.endsWith(" OK")
+
+        if (!isAtz && !isOk) {
             Log.e(TAG, "ELM init failed for '$command': ${r.response.normalized}")
             Log.e(TAG, "Full raw response: ${r.response.raw}")
             error("ELM init failed for '$command': ${r.response.normalized}")
         }
-        Log.d(TAG, "Command '$command' completed successfully with OK")
+        Log.d(TAG, "Command '$command' completed successfully")
     }
 
     private fun writeLine(line: String) {
@@ -83,46 +88,36 @@ class Elm327Session(
 
     private fun readUntilPrompt(timeoutMs: Long): String {
         Log.d(TAG, "Reading response with timeout ${timeoutMs}ms...")
-        val start = System.nanoTime()
-        val buf = ByteArray(256)
+        val start = System.currentTimeMillis()
         val sb = StringBuilder()
 
-        fun timedOut(): Boolean {
-            val elapsedMs = (System.nanoTime() - start) / 1_000_000
-            return elapsedMs > timeoutMs
+        try {
+            while (System.currentTimeMillis() - start < timeoutMs) {
+                if (input.available() > 0) {
+                    val buf = ByteArray(256)
+                    val read = input.read(buf)
+                    if (read == -1) break
+
+                    val chunk = String(buf, 0, read, Charsets.US_ASCII)
+                    Log.d(TAG, "Read $read bytes: '$chunk'")
+                    sb.append(chunk)
+
+                    if (chunk.contains('>')) {
+                        Log.d(TAG, "Found prompt '>', stopping read")
+                        break
+                    }
+                } else {
+                    Thread.sleep(20)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading from input stream", e)
         }
 
-        var totalBytesRead = 0
-        while (true) {
-            if (timedOut()) {
-                Log.d(TAG, "Read timeout after ${(System.nanoTime() - start) / 1_000_000}ms, total bytes: $totalBytesRead")
-                break
-            }
-
-            val available = runCatching { input.available() }.getOrDefault(0)
-            if (available <= 0) {
-                Thread.sleep(10)
-                continue
-            }
-
-            val toRead = min(buf.size, available)
-            val read = input.read(buf, 0, toRead)
-            if (read <= 0) break
-            
-            totalBytesRead += read
-            val chunk = String(buf, 0, read, Charsets.US_ASCII)
-            Log.d(TAG, "Read $read bytes: '$chunk'")
-            sb.append(chunk)
-            if (chunk.contains('>') || sb.contains(">")) {
-                Log.d(TAG, "Found prompt '>', stopping read")
-                break
-            }
-        }
         val result = sb.toString()
         Log.d(TAG, "Final response string (${result.length} chars): '$result'")
         return result
     }
-
     private fun StringBuilder.contains(s: String): Boolean {
         return indexOf(s) >= 0
     }
