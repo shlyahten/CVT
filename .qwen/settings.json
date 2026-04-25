@@ -59,5 +59,11 @@
     "auth": {
       "selectedType": "openai"
     }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew *)",
+      "Bash(gradlew *)"
+    ]
   }
 }
