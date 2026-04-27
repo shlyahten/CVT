@@ -44,13 +44,14 @@ class MainActivity : ComponentActivity() {
             val allGranted = permissions.values.all { it }
             vm.setHasConnectPermission(allGranted)
             if (allGranted) {
-                vm.refreshBondedDevices(this)
+                vm.refreshBondedDevices()
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+        vm.initialize(this)
         enableEdgeToEdge()
         setContent {
             CVTTheme {
@@ -86,6 +87,7 @@ fun MainScreen(
     val hasConnectPermission = remember(state.hasConnectPermission) { state.hasConnectPermission }
 
     LaunchedEffect(Unit) {
+        vm.initialize(ctx)
         val granted = if (Build.VERSION.SDK_INT < 31) {
             true
         } else {
@@ -93,7 +95,7 @@ fun MainScreen(
                     ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
         }
         vm.setHasConnectPermission(granted)
-        vm.refreshBondedDevices(ctx)
+        vm.refreshBondedDevices()
     }
 
     Scaffold(
@@ -143,7 +145,7 @@ fun MainScreen(
                             enabled = state.isConnected || state.isConnecting,
                             onClick = { vm.disconnect() },
                         ) { Text("Disconnect") }
-                        Button(onClick = { vm.refreshBondedDevices(ctx) }) { Text("Refresh") }
+                        Button(onClick = { vm.refreshBondedDevices() }) { Text("Refresh") }
                     }
                     Text("Status: ${state.status}")
                 }
