@@ -39,9 +39,8 @@ class ExpressionEvaluatorTest {
         val formula = "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)"
         val result = ExpressionEvaluator.eval(formula, vars)
         
-        // Expected: calculate manually or from reference
-        // N=100: 2.344 + -138.7 + 319.3 + -350.1 + 230.2 + -36.6 = 26.444
-        assertEquals(26.44, result, 0.1)
+        // Expected: N=100: 23.44 + -138.7 + 319.3 + -350.1 + 230.2 + -36.6 = 47.54
+        assertEquals(47.54, result, 0.1)
     }
     
     @Test
