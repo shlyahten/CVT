@@ -7,6 +7,8 @@ import ru.shlyahten.cvt.domain.model.ConnectionState
 import ru.shlyahten.cvt.elm.Elm327Session
 import ru.shlyahten.cvt.obd.ExpressionEvaluator
 import ru.shlyahten.cvt.obd.ObdPayloadDecoder
+import ru.shlyahten.cvt.obd.ObdResult
+import ru.shlyahten.cvt.obd.ObdErrorType
 import ru.shlyahten.cvt.obd.ObdVariableMapping
 import ru.shlyahten.cvt.obd.PidSpec
 import android.bluetooth.BluetoothAdapter
@@ -102,14 +104,14 @@ class ObdRepositoryImpl(
             val response = currentSession.send(spec.modeAndPid, timeoutMs = 1500)
             
             if (response.response.isNoData) {
-                error("NO DATA response for ${spec.modeAndPid}")
+                return@runCatching throw ObdException("NO DATA response for ${spec.modeAndPid}", ObdErrorType.NoData)
             }
             if (response.response.isError) {
-                error(response.response.normalized.ifBlank { "ELM error" })
+                return@runCatching throw ObdException(response.response.normalized.ifBlank { "ELM error" }, ObdErrorType.ProtocolError)
             }
             
             val data = ObdPayloadDecoder.extractDataBytes(spec.modeAndPid, response.response.normalized)
-                ?: error("No payload for ${spec.modeAndPid}")
+                ?: return@runCatching throw ObdException("No payload for ${spec.modeAndPid}", ObdErrorType.PayloadNotFound)
             
             val variables = ObdVariableMapping.fromDataBytes(data)
             ExpressionEvaluator.eval(spec.equation, variables)
