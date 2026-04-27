@@ -9,6 +9,7 @@ import ru.shlyahten.cvt.obd.ExpressionEvaluator
 import ru.shlyahten.cvt.obd.ObdPayloadDecoder
 import ru.shlyahten.cvt.obd.ObdResult
 import ru.shlyahten.cvt.obd.ObdErrorType
+import ru.shlyahten.cvt.obd.ObdException
 import ru.shlyahten.cvt.obd.ObdVariableMapping
 import ru.shlyahten.cvt.obd.PidSpec
 import android.bluetooth.BluetoothAdapter
