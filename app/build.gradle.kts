@@ -3,16 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// Load version from version.properties
-val versionPropsFile = rootProject.file("version.properties")
-val versionProperties = java.util.Properties()
-if (versionPropsFile.exists()) {
-    versionProperties.load(java.io.FileInputStream(versionPropsFile))
-}
-
-val versionNameDefault = versionProperties.getProperty("versionName", "1.0.0")
-val versionCodeDefault = versionProperties.getProperty("versionCode", "1").toInt()
-
 android {
     namespace = "ru.shlyahten.cvt"
     compileSdk {
@@ -25,8 +15,8 @@ android {
         applicationId = "ru.shlyahten.cvt"
         minSdk = 24
         targetSdk = 36
-        versionCode = versionCodeDefault
-        versionName = versionNameDefault
+        versionCode = 1
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
