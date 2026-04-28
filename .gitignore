@@ -1,25 +1,14 @@
 ```
-# Compiled and build artifacts
-*.class
-*.o
-*.obj
-*.out
+# Build artifacts
 build/
-target/
+.gradle/
 
 # Dependencies
-.gradle/
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
+.libs/
 
 # Logs and temp files
 *.log
 *.tmp
-*.swp
 
 # Environment
 .env
@@ -27,19 +16,12 @@ __pycache__/
 *.env.*
 
 # Editors
-.vscode/
 .idea/
+.vscode/
+*.swp
+*.swo
 
-# System files
+# OS
 .DS_Store
 Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
 ```
-/.qwen
-local.properties
-```
-/.qwen
