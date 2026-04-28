@@ -1,27 +1,80 @@
 ```
 # Build artifacts
 build/
-.gradle/
+*.apk
+*.aab
+*.aar
 
 # Dependencies
-.libs/
+.gradle/
+node_modules/
+vendor/
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editors
+# IDE files
 .idea/
+*.iml
+*.iws
 .vscode/
-*.swp
-*.swo
 
-# OS
+# OS generated files
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.tox/
+.coverage*
+
+# Java/Android specific
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+
+# Distribution artifacts
+dist/
+target/
+out/
+bin/
+gen/
+
+# Compressed files
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.gz
+*.bz2
+*.xz
+*.7z
+*.rar
 ```

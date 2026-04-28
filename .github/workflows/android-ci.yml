@@ -18,6 +18,29 @@ jobs:
         cache: gradle
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+    - name: Bump version
+      run: |
+        # Read current version
+        VERSION_NAME=$(grep "^versionName=" version.properties | cut -d'=' -f2)
+        VERSION_CODE=$(grep "^versionCode=" version.properties | cut -d'=' -f2)
+        
+        # Parse semantic version and bump patch
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
+        NEW_PATCH=$((PATCH + 1))
+        NEW_VERSION_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
+        NEW_VERSION_CODE=$((VERSION_CODE + 1))
+        
+        # Update version.properties
+        sed -i "s/^versionName=.*/versionName=${NEW_VERSION_NAME}/" version.properties
+        sed -i "s/^versionCode=.*/versionCode=${NEW_VERSION_CODE}/" version.properties
+        
+        echo "Version bumped to ${NEW_VERSION_NAME} (${NEW_VERSION_CODE})"
+    - name: Commit version bump
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "chore: bump version to $(grep '^versionName=' version.properties | cut -d'=' -f2)"
+        file_pattern: version.properties
+        branch: ${{ github.head_ref }}
     - name: Build with Gradle
       run: ./gradlew build
     - name: Run tests
