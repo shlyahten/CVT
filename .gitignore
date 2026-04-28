@@ -1,80 +1,70 @@
 ```
-# Build artifacts
-build/
-*.apk
-*.aab
-*.aar
-
-# Dependencies
-.gradle/
-node_modules/
-vendor/
-
-# Logs
-*.log
-
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
-# IDE files
-.idea/
-*.iml
-*.iws
-.vscode/
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.julia/
+zig*/
+target/
+.gradle/
 
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-*~
-
-# Coverage reports
+# Compiled/Build artifacts
+*.pyc
+*.class
+*.o
+*.exe
+*.dll
+*.so
+*.a
+*.obj
+*.out
+dist/
+build/
 coverage/
 htmlcov/
 .coverage
 
-# Python specific
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-*.egg-info/
-.eggs/
-.mypy_cache/
-.pytest_cache/
-.tox/
-.coverage*
+# Editors/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
 
-# Java/Android specific
-*.class
-*.jar
-*.war
-*.ear
-hs_err_pid*
-replay_pid*
-
-# Distribution artifacts
-dist/
-target/
-out/
-bin/
-gen/
+# System
+.DS_Store
+Thumbs.db
+*.log
 
 # Compressed files
 *.zip
-*.tar.gz
-*.tar.bz2
-*.tar.xz
 *.gz
+*.tar
+*.tgz
 *.bz2
 *.xz
 *.7z
 *.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```

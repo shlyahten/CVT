@@ -40,7 +40,8 @@ jobs:
       with:
         commit_message: "chore: bump version to $(grep '^versionName=' version.properties | cut -d'=' -f2)"
         file_pattern: version.properties
-        branch: ${{ github.head_ref }}
+        branch: ${{ github.ref_name }}
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Build with Gradle
       run: ./gradlew build
     - name: Run tests
