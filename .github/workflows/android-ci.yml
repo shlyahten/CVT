@@ -1,32 +1,82 @@
 name: Android CI
+
 on:
   push:
-    branches: [ "main", "master" ]
+    branches:
+      - '**'
   pull_request:
-    branches: [ "main", "master" ]
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
-    - name: Run tests
-      run: ./gradlew test
-    - name: Build debug APK
-      run: ./gradlew assembleDebug
-    - name: Upload debug APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 7
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Bump version.properties
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FILE="version.properties"
+
+          if [[ ! -f "$FILE" ]]; then
+            echo "VERSION_CODE=1" > "$FILE"
+            echo "VERSION_NAME=1.0.0" >> "$FILE"
+            exit 0
+          fi
+
+          VERSION_CODE="$(grep '^VERSION_CODE=' "$FILE" | head -n1 | cut -d'=' -f2 | tr -d '\r')"
+          VERSION_NAME="$(grep '^VERSION_NAME=' "$FILE" | head -n1 | cut -d'=' -f2- | tr -d '\r')"
+
+          if [[ -z "${VERSION_CODE:-}" ]]; then
+            VERSION_CODE=0
+          fi
+          if [[ -z "${VERSION_NAME:-}" ]]; then
+            VERSION_NAME=1.0.0
+          fi
+
+          NEXT_VERSION_CODE=$((VERSION_CODE + 1))
+
+          {
+            echo "VERSION_CODE=$NEXT_VERSION_CODE"
+            echo "VERSION_NAME=$VERSION_NAME"
+          } > "$FILE"
+
+      - name: Commit version.properties
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: .
+          file_pattern: version.properties
+          commit_message: "ci: bump version.properties"
+          branch: ${{ github.head_ref || github.ref_name }}
