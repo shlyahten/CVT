@@ -1,48 +1,48 @@
 ```
+# CI/CD
+.github/
+
+# Logs and temp files
+*.log
+*.tmp
+
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
 # Dependencies
 node_modules/
 venv/
 .venv/
 __pycache__/
-.mypy_cache/
-.pytest_cache/
-.julia/
-zig*/
+*.egg-info/
+dist/
+build/
 target/
 .gradle/
 
-# Compiled/Build artifacts
-*.pyc
-*.class
-*.o
-*.exe
-*.dll
-*.so
-*.a
-*.obj
-*.out
-dist/
-build/
-coverage/
-htmlcov/
-.coverage
-
-# Editors/IDE
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
 
-# System
+# OS
 .DS_Store
 Thumbs.db
-*.log
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
 
 # Compressed files
 *.zip
