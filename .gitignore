@@ -1,6 +1,5 @@
 ```
 # CI/CD
-.github/
 
 # Logs and temp files
 *.log
