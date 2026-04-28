@@ -8,11 +8,11 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+    
     - name: set up JDK 11
       uses: actions/setup-java@v4
       with:
@@ -22,5 +22,28 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
+    
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+    
+    - name: Build Debug Bundle
+      run: ./gradlew bundleDebug
+    
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: |
+          **/build/outputs/apk/debug/*.apk
+        retention-days: 30
+    
+    - name: Upload Debug Bundle
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-bundle
+        path: |
+          **/build/outputs/bundle/debug/*.aab
+        retention-days: 30
+    
+    - name: Run Tests
+      run: ./gradlew test
