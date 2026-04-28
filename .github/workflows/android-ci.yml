@@ -1,20 +1,12 @@
-name: Android CI
+name: Build APK + Auto Version
 
 on:
   push:
-    branches:
-      - '**'
-  pull_request:
-    branches:
-      - '**'
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 permissions:
   contents: write
-
-concurrency:
-  group: android-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name || github.run_id }}
-  cancel-in-progress: true
 
 jobs:
   build:
@@ -25,58 +17,55 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Set up JDK 17
+      - name: Set branch name
+        id: vars
+        run: echo "BRANCH=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: 17
           cache: gradle
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
+      - name: Grant execute
+        run: chmod +x gradlew
 
-      - name: Build
-        run: ./gradlew build
-
-      - name: Bump version.properties
-        shell: bash
+      # --- автоинкремент версии ---
+      - name: Bump version
         run: |
-          set -euo pipefail
+          FILE=version.properties
 
-          FILE="version.properties"
+          if [ ! -f $FILE ]; then
+            echo "VERSION_CODE=1" > $FILE
+            echo "VERSION_NAME=1.0.0" >> $FILE
+          else
+            CODE=$(grep VERSION_CODE $FILE | cut -d'=' -f2)
+            NAME=$(grep VERSION_NAME $FILE | cut -d'=' -f2)
 
-          if [[ ! -f "$FILE" ]]; then
-            echo "VERSION_CODE=1" > "$FILE"
-            echo "VERSION_NAME=1.0.0" >> "$FILE"
-            exit 0
+            CODE=$((CODE+1))
+
+            echo "VERSION_CODE=$CODE" > $FILE
+            echo "VERSION_NAME=$NAME" >> $FILE
           fi
 
-          VERSION_CODE="$(grep '^VERSION_CODE=' "$FILE" | head -n1 | cut -d'=' -f2 | tr -d '\r')"
-          VERSION_NAME="$(grep '^VERSION_NAME=' "$FILE" | head -n1 | cut -d'=' -f2- | tr -d '\r')"
-
-          if [[ -z "${VERSION_CODE:-}" ]]; then
-            VERSION_CODE=0
-          fi
-          if [[ -z "${VERSION_NAME:-}" ]]; then
-            VERSION_NAME=1.0.0
-          fi
-
-          NEXT_VERSION_CODE=$((VERSION_CODE + 1))
-
-          {
-            echo "VERSION_CODE=$NEXT_VERSION_CODE"
-            echo "VERSION_NAME=$VERSION_NAME"
-          } > "$FILE"
-
-      - name: Commit version.properties
+      - name: Commit version
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          repository: .
           file_pattern: version.properties
-          commit_message: "ci: bump version.properties"
-          branch: ${{ github.head_ref || github.ref_name }}
+          commit_message: "ci: bump version"
+          branch: ${{ env.BRANCH }}
+
+      # --- сборка ---
+      - name: Build APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: app/build/outputs/apk/debug/*.apk
