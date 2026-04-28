@@ -194,6 +194,37 @@ fun MainScreen(
                     }
                 }
             }
+
+            Card {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("Log событий", style = MaterialTheme.typography.titleMedium)
+                        Button(
+                            onClick = { vm.clearLogPublic() },
+                            enabled = state.logEntries.isNotEmpty(),
+                        ) {
+                            Text("Clear")
+                        }
+                    }
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(state.logEntries.size) { index ->
+                            Text(
+                                text = state.logEntries[index],
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
