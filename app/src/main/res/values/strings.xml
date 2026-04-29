@@ -1,3 +1,75 @@
 <resources>
+    <!-- App Name -->
     <string name="app_name">CVT</string>
+
+    <!-- Main Screen - Top Bar -->
+    <string name="screen_main_top_bar_title">CVT (ELM327)</string>
+
+    <!-- Main Screen - Bluetooth Permission -->
+    <string name="screen_main_permission_message">Нужно разрешение Bluetooth для доступа к спаренным устройствам.</string>
+    <string name="screen_main_permission_button">Разрешить BLUETOOTH_CONNECT</string>
+
+    <!-- Main Screen - Device Selection -->
+    <string name="screen_main_device_title">Устройство (спаренное)</string>
+    <string name="screen_main_no_paired_devices">Нет спаренных устройств. Спарьте ELM327 в настройках Bluetooth Android.</string>
+    <string name="screen_main_button_connect">Connect</string>
+    <string name="screen_main_button_connecting">Connecting…</string>
+    <string name="screen_main_button_disconnect">Disconnect</string>
+    <string name="screen_main_button_refresh">Refresh</string>
+    <string name="screen_main_status_label">Status: %1$s</string>
+
+    <!-- Main Screen - CVT Temperature -->
+    <string name="screen_main_cvt_temp_title">CVT температура</string>
+    <string name="screen_main_cvt_temp_chip_1">Temp 1</string>
+    <string name="screen_main_cvt_temp_chip_2">Temp 2</string>
+    <string name="screen_main_cvt_temp_value" formatted="false">%.1f °C</string>
+    <string name="screen_main_cvt_temp_no_data">—</string>
+
+    <!-- Main Screen - Oil Degradation -->
+    <string name="screen_main_oil_title">CVT oil degradation (2110)</string>
+    <string name="screen_main_oil_button_read">Read once</string>
+    <string name="screen_main_oil_no_data">—</string>
+
+    <!-- Main Screen - Last Raw Response -->
+    <string name="screen_main_raw_title">Последний RAW ответ</string>
+
+    <!-- Main Screen - Journal/Log -->
+    <string name="screen_main_journal_title">Журнал</string>
+    <string name="screen_main_journal_button_copy">Copy</string>
+    <string name="screen_main_journal_button_clear">Clear</string>
+    <string name="screen_main_journal_clipboard_label">Journal</string>
+
+    <!-- Status Messages (used in UiState) -->
+    <string name="status_idle">Idle</string>
+    <string name="status_no_paired_devices">No paired devices</string>
+    <string name="status_missing_bluetooth_permission">Missing BLUETOOTH_CONNECT permission</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_connect_error">Connect error: %1$s</string>
+    <string name="status_not_connected">Not connected</string>
+    <string name="status_oil_degradation_read">Oil degradation read</string>
+    <string name="status_oil_read_error">Oil read error: %1$s</string>
+    <string name="status_poll_error">Poll error: %1$s</string>
+    <string name="status_ok">OK</string>
+
+    <!-- Log Entries -->
+    <string name="log_app_initialized">App initialized</string>
+    <string name="log_refreshing_bonded_devices">Refreshing bonded devices…</string>
+    <string name="log_found_bonded_devices">Found %1$d bonded devices</string>
+    <string name="log_bluetooth_permission_granted">Bluetooth permission granted</string>
+    <string name="log_missing_bluetooth_permission">Missing BLUETOOTH_CONNECT permission</string>
+    <string name="log_connecting_to_device">Connecting to %1$s…</string>
+    <string name="log_opening_bluetooth_connection">Opening Bluetooth connection…</string>
+    <string name="log_elm_initialized">ELM327 initialized successfully</string>
+    <string name="log_connection_established">Connection established</string>
+    <string name="log_connection_failed">Connection failed: %1$s</string>
+    <string name="log_disconnected">Disconnected</string>
+    <string name="log_cannot_read_oil_not_connected">Cannot read oil degradation: not connected</string>
+    <string name="log_reading_oil_degradation">Reading oil degradation (2110)…</string>
+    <string name="log_oil_degradation_value">Oil degradation: %1$d</string>
+    <string name="log_oil_read_error">Oil read error: %1$s</string>
+    <string name="log_polling_cvt_temp">Polling CVT temp (%1$s)…</string>
+    <string name="log_cvt_temp_value" formatted="false">CVT temp: %.1f °C</string>
+    <string name="log_poll_error">Poll error (%1$d): %2$s</string>
+    <string name="log_cleared_by_user">Log cleared by user</string>
 </resources>

@@ -36,10 +36,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.shlyahten.cvt.R
 import ru.shlyahten.cvt.ui.CvtTempFormula
 import ru.shlyahten.cvt.ui.MainViewModel
 import ru.shlyahten.cvt.ui.theme.CVTTheme
@@ -107,7 +109,7 @@ fun MainScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(title = { Text("CVT (ELM327)") })
+            TopAppBar(title = { Text(stringResource(R.string.screen_main_top_bar_title)) })
         },
     ) { inner ->
         Column(
@@ -120,17 +122,17 @@ fun MainScreen(
             if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Нужно разрешение Bluetooth для доступа к спаренным устройствам.")
-                        Button(onClick = requestBtPermission) { Text("Разрешить BLUETOOTH_CONNECT") }
+                        Text(stringResource(R.string.screen_main_permission_message))
+                        Button(onClick = requestBtPermission) { Text(stringResource(R.string.screen_main_permission_button)) }
                     }
                 }
             }
 
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Устройство (спаренное)", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.screen_main_device_title), style = MaterialTheme.typography.titleMedium)
                     if (state.bondedDevices.isEmpty()) {
-                        Text("Нет спаренных устройств. Спарьте ELM327 в настройках Bluetooth Android.")
+                        Text(stringResource(R.string.screen_main_no_paired_devices))
                     } else {
                         state.bondedDevices.forEach { d ->
                             val selected = d.address == state.selectedDeviceAddress
@@ -141,7 +143,7 @@ fun MainScreen(
                                 FilterChip(
                                     selected = selected,
                                     onClick = { vm.selectDevice(d.address) },
-                                    label = { Text("${d.name ?: "ELM327"} (${d.address})") },
+                                    label = { Text("${d.name ?: stringResource(R.string.app_name)} (${d.address})") },
                                 )
                             }
                         }
@@ -153,20 +155,20 @@ fun MainScreen(
                         Button(
                             enabled = !state.isConnected && !state.isConnecting,
                             onClick = { vm.connect(ctx) },
-                        ) { Text(if (state.isConnecting) "Connecting..." else "Connect") }
+                        ) { Text(if (state.isConnecting) stringResource(R.string.screen_main_button_connecting) else stringResource(R.string.screen_main_button_connect)) }
                         Button(
                             enabled = state.isConnected || state.isConnecting,
                             onClick = { vm.disconnect() },
-                        ) { Text("Disconnect") }
-                        Button(onClick = { vm.refreshBondedDevices() }) { Text("Refresh") }
+                        ) { Text(stringResource(R.string.screen_main_button_disconnect)) }
+                        Button(onClick = { vm.refreshBondedDevices() }) { Text(stringResource(R.string.screen_main_button_refresh)) }
                     }
-                    Text("Status: ${state.status}")
+                    Text(stringResource(R.string.screen_main_status_label, state.status))
                 }
             }
 
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("CVT температура", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.screen_main_cvt_temp_title), style = MaterialTheme.typography.titleMedium)
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -174,17 +176,17 @@ fun MainScreen(
                         FilterChip(
                             selected = state.cvtTempFormula == CvtTempFormula.Temp1,
                             onClick = { vm.setFormula(CvtTempFormula.Temp1) },
-                            label = { Text("Temp 1") },
+                            label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_1)) },
                         )
                         FilterChip(
                             selected = state.cvtTempFormula == CvtTempFormula.Temp2,
                             onClick = { vm.setFormula(CvtTempFormula.Temp2) },
-                            label = { Text("Temp 2") },
+                            label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_2)) },
                         )
                     }
                     val t = state.cvtTempC
                     Text(
-                        text = if (t == null) "—" else String.format("%.1f °C", t),
+                        text = if (t == null) stringResource(R.string.screen_main_cvt_temp_no_data) else stringResource(R.string.screen_main_cvt_temp_value, t),
                         style = MaterialTheme.typography.displaySmall,
                     )
                 }
@@ -192,15 +194,15 @@ fun MainScreen(
 
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("CVT oil degradation (2110)", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.screen_main_oil_title), style = MaterialTheme.typography.titleMedium)
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(enabled = state.isConnected, onClick = { vm.readOilDegradationOnce() }) {
-                            Text("Read once")
+                            Text(stringResource(R.string.screen_main_oil_button_read))
                         }
-                        Text(text = state.oilDegradation?.toString() ?: "—")
+                        Text(text = state.oilDegradation?.toString() ?: stringResource(R.string.screen_main_oil_no_data))
                     }
                 }
             }
@@ -208,7 +210,7 @@ fun MainScreen(
             if (!state.lastRaw.isNullOrBlank()) {
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Последний RAW ответ", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.screen_main_raw_title), style = MaterialTheme.typography.titleMedium)
                         Text(
                             text = state.lastRaw ?: "",
                             modifier = Modifier.horizontalScroll(rememberScrollState())
@@ -223,25 +225,25 @@ fun MainScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("Журнал", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.screen_main_journal_title), style = MaterialTheme.typography.titleMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {
                                     val logText = state.logEntries.joinToString("\n")
                                     if (logText.isNotEmpty()) {
                                         val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("Journal", logText))
+                                        clipboard.setPrimaryClip(ClipData.newPlainText(ctx.getString(R.string.screen_main_journal_clipboard_label), logText))
                                     }
                                 },
                                 enabled = state.logEntries.isNotEmpty(),
                             ) {
-                                Text("Copy")
+                                Text(stringResource(R.string.screen_main_journal_button_copy))
                             }
                             Button(
                                 onClick = { vm.clearLogPublic() },
                                 enabled = state.logEntries.isNotEmpty(),
                             ) {
-                                Text("Clear")
+                                Text(stringResource(R.string.screen_main_journal_button_clear))
                             }
                         }
                     }
