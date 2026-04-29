@@ -82,6 +82,7 @@ class MainViewModel : ViewModel() {
         manageConnection = ManageObdConnection(obdRepository)
         readCvtTemperature = ReadCvtTemperature(obdRepository)
         readOilDegradation = ReadOilDegradation(obdRepository)
+        addLogEntry("App initialized")
     }
     
     fun refreshBondedDevices() {
@@ -104,6 +105,9 @@ class MainViewModel : ViewModel() {
 
     fun setHasConnectPermission(granted: Boolean) {
         _state.update { it.copy(hasConnectPermission = granted) }
+        if (granted) {
+            addLogEntry("Bluetooth permission granted")
+        }
     }
 
     fun setFormula(formula: CvtTempFormula) {
@@ -119,9 +123,8 @@ class MainViewModel : ViewModel() {
         }
 
         disconnect()
-        clearLog()
-        addLogEntry("Connecting to $address...")
         _state.update { it.copy(isConnecting = true, status = "Connecting...") }
+        addLogEntry("Connecting to $address...")
 
         viewModelScope.launch {
             try {
@@ -140,18 +143,17 @@ class MainViewModel : ViewModel() {
                 Log.e(TAG, "Connection failed: ${t.message}", t)
                 addLogEntry("Connection failed: ${t.message}")
                 disconnect()
+                addLogEntry("Disconnected")
                 _state.update { it.copy(isConnecting = false, isConnected = false, status = "Connect error: ${t.message}") }
             }
         }
     }
 
     fun disconnect() {
-        addLogEntry("Disconnecting...")
         pollJob?.cancel()
         pollJob = null
         manageConnection.disconnect()
         _state.update { it.copy(isConnecting = false, isConnected = false) }
-        addLogEntry("Disconnected")
     }
 
     fun readOilDegradationOnce() {
