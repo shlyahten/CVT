@@ -86,8 +86,6 @@ fun MainScreen(
     val ctx = LocalContext.current
     val state by vm.state.collectAsState()
 
-    val hasConnectPermission = remember(state.hasConnectPermission) { state.hasConnectPermission }
-
     LaunchedEffect(Unit) {
         vm.initialize(ctx)
         val granted = if (Build.VERSION.SDK_INT < 31) {
@@ -112,7 +110,7 @@ fun MainScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (Build.VERSION.SDK_INT >= 31 && !hasConnectPermission) {
+            if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Нужно разрешение Bluetooth для доступа к спаренным устройствам.")
