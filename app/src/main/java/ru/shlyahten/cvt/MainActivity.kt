@@ -86,8 +86,6 @@ fun MainScreen(
     val ctx = LocalContext.current
     val state by vm.state.collectAsState()
 
-    val hasConnectPermission = remember(state.hasConnectPermission) { state.hasConnectPermission }
-
     LaunchedEffect(Unit) {
         vm.initialize(ctx)
         val granted = if (Build.VERSION.SDK_INT < 31) {
