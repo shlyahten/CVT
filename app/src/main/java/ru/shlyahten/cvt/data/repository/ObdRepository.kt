@@ -14,6 +14,7 @@ import ru.shlyahten.cvt.obd.ObdVariableMapping
 import ru.shlyahten.cvt.obd.PidSpec
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.util.Log
 import java.io.Closeable
 
 /**
