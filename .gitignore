@@ -1,1 +1,35 @@
-Nothing should be ignored in this case, as the changes only include source/config files (.md files) without any build artifacts, dependencies, or temp files.
+```
+# Compiled and build artifacts
+*.class
+*.dex
+*.so
+*.aar
+*.apk
+*.jar
+
+# Dependencies
+.gradle/
+build/
+app/build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env.*
+```
