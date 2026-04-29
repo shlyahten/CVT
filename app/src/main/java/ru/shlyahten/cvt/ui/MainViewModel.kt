@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.shlyahten.cvt.R
 import ru.shlyahten.cvt.data.repository.ObdRepository
 import ru.shlyahten.cvt.data.repository.ObdRepositoryImpl
 import ru.shlyahten.cvt.domain.usecase.ManageObdConnection
@@ -82,7 +83,7 @@ class MainViewModel : ViewModel() {
         manageConnection = ManageObdConnection(obdRepository)
         readCvtTemperature = ReadCvtTemperature(obdRepository)
         readOilDegradation = ReadOilDegradation(obdRepository)
-        addLogEntry("App initialized")
+        addLogEntry(context.getString(R.string.log_app_initialized))
     }
     
     fun refreshBondedDevices() {
@@ -117,34 +118,34 @@ class MainViewModel : ViewModel() {
     fun connect(context: Context) {
         val address = state.value.selectedDeviceAddress ?: return
         if (Build.VERSION.SDK_INT >= 31 && !state.value.hasConnectPermission) {
-            addLogEntry("Missing BLUETOOTH_CONNECT permission")
-            _state.update { it.copy(status = "Missing BLUETOOTH_CONNECT permission") }
+            addLogEntry(context.getString(R.string.log_missing_bluetooth_permission))
+            _state.update { it.copy(status = context.getString(R.string.status_missing_bluetooth_permission)) }
             return
         }
 
         disconnect()
-        _state.update { it.copy(isConnecting = true, status = "Connecting...") }
-        addLogEntry("Connecting to $address...")
+        _state.update { it.copy(isConnecting = true, status = context.getString(R.string.status_connecting)) }
+        addLogEntry(context.getString(R.string.log_connecting_to_device, address))
 
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
                     Log.d(TAG, "=== Starting Bluetooth connection ===")
-                    addLogEntry("Opening Bluetooth connection...")
+                    addLogEntry(context.getString(R.string.log_opening_bluetooth_connection))
                     manageConnection.connect(address)
                         .getOrElse { throw it }
                     Log.d(TAG, "=== Connection established and ELM327 initialized ===")
-                    addLogEntry("ELM327 initialized successfully")
+                    addLogEntry(context.getString(R.string.log_elm_initialized))
                 }
-                _state.update { it.copy(isConnecting = false, isConnected = true, status = "Connected") }
-                addLogEntry("Connection established")
+                _state.update { it.copy(isConnecting = false, isConnected = true, status = context.getString(R.string.status_connected)) }
+                addLogEntry(context.getString(R.string.log_connection_established))
                 startPolling()
             } catch (t: Throwable) {
                 Log.e(TAG, "Connection failed: ${t.message}", t)
-                addLogEntry("Connection failed: ${t.message}")
+                addLogEntry(context.getString(R.string.log_connection_failed, t.message))
                 disconnect()
-                addLogEntry("Disconnected")
-                _state.update { it.copy(isConnecting = false, isConnected = false, status = "Connect error: ${t.message}") }
+                addLogEntry(context.getString(R.string.log_disconnected))
+                _state.update { it.copy(isConnecting = false, isConnected = false, status = context.getString(R.string.status_connect_error, t.message)) }
             }
         }
     }
@@ -184,7 +185,8 @@ class MainViewModel : ViewModel() {
                 if (!manageConnection.isConnected()) break
                 try {
                     val formula = state.value.cvtTempFormula
-                    addLogEntry("Polling CVT temp (${if (formula == CvtTempFormula.Temp1) "Temp1" else "Temp2"})...")
+                    val tempName = if (formula == CvtTempFormula.Temp1) "Temp1" else "Temp2"
+                    addLogEntry("Polling CVT temp ($tempName)...")
                     val tempResult = when (formula) {
                         CvtTempFormula.Temp1 -> readCvtTemperature.execute(ReadCvtTemperature.Formula.Temp1)
                         CvtTempFormula.Temp2 -> readCvtTemperature.execute(ReadCvtTemperature.Formula.Temp2)
@@ -195,7 +197,7 @@ class MainViewModel : ViewModel() {
                     _state.update { it.copy(cvtTempC = temp, status = "OK") }
                 } catch (t: Throwable) {
                     errorCount++
-                    addLogEntry("Poll error (${errorCount}): ${t.message}")
+                    addLogEntry("Poll error ($errorCount): ${t.message}")
                     _state.update { it.copy(status = "Poll error: ${t.message}") }
                 }
                 delay(1000)
