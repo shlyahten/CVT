@@ -12,9 +12,9 @@ class ObdVariableMappingTest {
         
         val vars = ObdVariableMapping.fromDataBytes(data)
         
-        assertEquals(80.0, vars["AA"], 0.001)
-        assertEquals(80.0, vars["N"], 0.001)
-        assertEquals(80.0, vars["A"], 0.001)
+        assertEquals(80.0, vars["AA"]!!, 0.001)
+        assertEquals(80.0, vars["N"]!!, 0.001)
+        assertEquals(80.0, vars["A"]!!, 0.001)
     }
 
     @Test
@@ -29,17 +29,17 @@ class ObdVariableMappingTest {
         
         val vars = ObdVariableMapping.fromDataBytes(data)
         
-        assertEquals(64.0, vars["AA"], 0.001)
-        assertEquals(128.0, vars["AB"], 0.001)
-        assertEquals(192.0, vars["AC"], 0.001)
-        assertEquals(255.0, vars["AD"], 0.001)
+        assertEquals(64.0, vars["AA"]!!, 0.001)
+        assertEquals(128.0, vars["AB"]!!, 0.001)
+        assertEquals(192.0, vars["AC"]!!, 0.001)
+        assertEquals(255.0, vars["AD"]!!, 0.001)
         
         // Aliases
-        assertEquals(64.0, vars["N"], 0.001)
-        assertEquals(64.0, vars["A"], 0.001)
-        assertEquals(128.0, vars["B"], 0.001)
-        assertEquals(192.0, vars["C"], 0.001)
-        assertEquals(255.0, vars["D"], 0.001)
+        assertEquals(64.0, vars["N"]!!, 0.001)
+        assertEquals(64.0, vars["A"]!!, 0.001)
+        assertEquals(128.0, vars["B"]!!, 0.001)
+        assertEquals(192.0, vars["C"]!!, 0.001)
+        assertEquals(255.0, vars["D"]!!, 0.001)
     }
 
     @Test
@@ -63,7 +63,7 @@ class ObdVariableMappingTest {
         val data = byteArrayOf()
         val vars = ObdVariableMapping.fromDataBytes(data)
         
-        assertEquals(0.0, vars["AA"], 0.001)
-        assertEquals(0.0, vars["N"], 0.001)
+        assertEquals(0.0, vars["AA"]!!, 0.001)
+        assertEquals(0.0, vars["N"]!!, 0.001)
     }
 }
