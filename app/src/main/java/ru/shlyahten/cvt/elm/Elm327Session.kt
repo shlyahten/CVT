@@ -40,6 +40,16 @@ class Elm327Session(
         Log.d(TAG, "Sending ATH1 (headers on)...")
         sendExpectOk("ATH1") // headers on; helps debugging and multi-ECU answers
         
+        // ELM327 v1.5 specific settings for CAN communication
+        Log.d(TAG, "Sending ATST0A (timeout 10x4ms=40ms for CAN)...")
+        sendExpectOk("ATST0A") // optimal timeout for CVT CAN bus
+        
+        Log.d(TAG, "Sending ATAT1 (adaptive timing on)...")
+        sendExpectOk("ATAT1") // adaptive timeout
+        
+        Log.d(TAG, "Sending ATCAF0 (CAN auto format off, 11-bit headers)...")
+        sendExpectOk("ATCAF0") // 11-bit CAN header format without auto-format
+        
         Log.d(TAG, "Sending ATSP0 (auto protocol)...")
         sendExpectOk("ATSP0") // auto protocol
         

@@ -102,9 +102,10 @@ class ObdRepositoryImpl(
             // Ensure header is set
             currentSession.sendExpectOk("ATSH${spec.headerHex}", timeoutMs = 800)
             
-            val response = currentSession.send(spec.modeAndPid, timeoutMs = 1500)
+            val response = currentSession.send(spec.modeAndPid, timeoutMs = 2000)
             
             if (response.response.isNoData) {
+                Log.w("OBD", "NO DATA for ${spec.modeAndPid}. Raw: ${response.response.raw}")
                 return@runCatching throw ObdException("NO DATA response for ${spec.modeAndPid}", ObdErrorType.NoData)
             }
             if (response.response.isError) {
