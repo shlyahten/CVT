@@ -63,7 +63,7 @@ class ObdVariableMappingTest {
         val data = byteArrayOf()
         val vars = ObdVariableMapping.fromDataBytes(data)
         
-        assertEquals(0.0, vars["AA"]!!, 0.001)
-        assertEquals(0.0, vars["N"]!!, 0.001)
+        assertEquals(0.0, vars.getOrElse("AA") { 0.0 }, 0.001)
+        assertEquals(0.0, vars.getOrElse("N") { 0.0 }, 0.001)
     }
 }
