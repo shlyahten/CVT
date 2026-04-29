@@ -134,12 +134,12 @@ fun MainScreen(
                     if (state.bondedDevices.isEmpty()) {
                         Text(stringResource(R.string.screen_main_no_paired_devices))
                     } else {
-                        state.bondedDevices.forEach { d ->
-                            val selected = d.address == state.selectedDeviceAddress
-                            Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            state.bondedDevices.forEach { d ->
+                                val selected = d.address == state.selectedDeviceAddress
                                 FilterChip(
                                     selected = selected,
                                     onClick = { vm.selectDevice(d.address) },
