@@ -248,7 +248,8 @@ fun MainScreen(
                     androidx.compose.foundation.lazy.LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp),
+                            .heightIn(max = 300.dp)
+                            .horizontalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         items(state.logEntries.size) { index ->
@@ -256,7 +257,6 @@ fun MainScreen(
                                 text = state.logEntries[index],
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                modifier = Modifier.horizontalScroll(rememberScrollState())
                             )
                         }
                     }
