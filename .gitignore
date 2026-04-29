@@ -1,1 +1,46 @@
-Nothing should be ignored in this case, as the changes only include source/config files (.md files) without any build artifacts, dependencies, or temp files.
+*.class
+*.dex
+*.jar
+*.war
+*.aar
+*.so
+*.dll
+*.dylib
+*.exe
+*.o
+*.obj
+*.out
+
+# Build directories
+build/
+.gradle/
+target/
+
+# Dependencies
+libs/
+vendor/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Temp files
+*.tmp
+*.temp
+*.log
+*~
+
+# Local configuration
+local.properties
+gradle.properties
+.settings/
+
+# Android specific
+*.ap_
+*.apk
+*.aab
+release/
+debug/

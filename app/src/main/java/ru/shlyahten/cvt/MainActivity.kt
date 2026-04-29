@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -107,7 +110,8 @@ fun MainScreen(
         Column(
             modifier = Modifier
                 .padding(inner)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
@@ -127,7 +131,10 @@ fun MainScreen(
                     } else {
                         state.bondedDevices.forEach { d ->
                             val selected = d.address == state.selectedDeviceAddress
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 FilterChip(
                                     selected = selected,
                                     onClick = { vm.selectDevice(d.address) },
@@ -136,7 +143,10 @@ fun MainScreen(
                             }
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(
                             enabled = !state.isConnected && !state.isConnecting,
                             onClick = { vm.connect(ctx) },
@@ -154,7 +164,10 @@ fun MainScreen(
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("CVT температура", style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FilterChip(
                             selected = state.cvtTempFormula == CvtTempFormula.Temp1,
                             onClick = { vm.setFormula(CvtTempFormula.Temp1) },
@@ -177,7 +190,10 @@ fun MainScreen(
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("CVT oil degradation (2110)", style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(enabled = state.isConnected, onClick = { vm.readOilDegradationOnce() }) {
                             Text("Read once")
                         }
@@ -190,7 +206,10 @@ fun MainScreen(
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Последний RAW ответ", style = MaterialTheme.typography.titleMedium)
-                        Text(state.lastRaw ?: "")
+                        Text(
+                            text = state.lastRaw ?: "",
+                            modifier = Modifier.horizontalScroll(rememberScrollState())
+                        )
                     }
                 }
             }
@@ -220,6 +239,7 @@ fun MainScreen(
                                 text = state.logEntries[index],
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                modifier = Modifier.horizontalScroll(rememberScrollState())
                             )
                         }
                     }
