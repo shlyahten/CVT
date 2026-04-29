@@ -1,6 +1,9 @@
 package ru.shlyahten.cvt
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Build
@@ -220,12 +223,26 @@ fun MainScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("Log событий", style = MaterialTheme.typography.titleMedium)
-                        Button(
-                            onClick = { vm.clearLogPublic() },
-                            enabled = state.logEntries.isNotEmpty(),
-                        ) {
-                            Text("Clear")
+                        Text("Журнал", style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    val logText = state.logEntries.joinToString("\n")
+                                    if (logText.isNotEmpty()) {
+                                        val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("Journal", logText))
+                                    }
+                                },
+                                enabled = state.logEntries.isNotEmpty(),
+                            ) {
+                                Text("Copy")
+                            }
+                            Button(
+                                onClick = { vm.clearLogPublic() },
+                                enabled = state.logEntries.isNotEmpty(),
+                            ) {
+                                Text("Clear")
+                            }
                         }
                     }
                     androidx.compose.foundation.lazy.LazyColumn(
