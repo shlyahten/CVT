@@ -9,24 +9,28 @@ object ObdVariableMapping {
      * - N aliases AA (per your CSV usage)
      */
     fun fromDataBytes(data: ByteArray): Map<String, Double> {
-        val vars = HashMap<String, Double>(64)
+        val baseMap = HashMap<String, Double>(64)
+        
         for (i in data.indices) {
             val v = (data[i].toInt() and 0xFF).toDouble()
             val idx = i + 1
             val nameAA = toDoubleLetter(idx) // AA, AB, AC...
-            vars[nameAA] = v
+            baseMap[nameAA] = v
         }
+        
         // A/B/C/D aliases
         val single = listOf("A", "B", "C", "D", "E", "F", "G", "H")
         for ((i, s) in single.withIndex()) {
             val idx = i + 1
             val aa = toDoubleLetter(idx)
-            vars[s] = vars[aa] ?: 0.0
+            baseMap[s] = baseMap[aa] ?: 0.0
         }
+        
         // N alias to AA
-        vars["N"] = vars["AA"] ?: 0.0
+        baseMap["N"] = baseMap["AA"] ?: 0.0
 
-        return vars
+        // Return a map with default value 0.0 for any missing key
+        return baseMap.withDefault { 0.0 }
     }
 
     // 1->AA, 2->AB, 3->AC ... 26->AZ, 27->BA...
