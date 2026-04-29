@@ -110,7 +110,7 @@ fun MainScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (Build.VERSION.SDK_INT >= 31 && !hasConnectPermission) {
+            if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Нужно разрешение Bluetooth для доступа к спаренным устройствам.")
