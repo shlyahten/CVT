@@ -32,7 +32,7 @@ object VehicleConfigs {
             headerHex = "7E1",
             formulas = mapOf(
                 "Temp1" to "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
-                "Temp2" to "(0.0000286*N*N*N)+(-0.00951*N*N)+(1.46*N)+(-30.1)"
+                "Temp2" to "((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1"
             )
         ),
         oilDegradationPid = PidConfig(

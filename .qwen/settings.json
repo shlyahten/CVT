@@ -63,7 +63,8 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew *)",
-      "Bash(gradlew *)"
+      "Bash(gradlew *)",
+      "Bash(gradlew.bat *)"
     ]
   }
 }
