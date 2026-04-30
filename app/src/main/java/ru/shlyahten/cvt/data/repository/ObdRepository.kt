@@ -44,6 +44,12 @@ interface ObdRepository : Closeable {
     fun isConnected(): Boolean
     
     /**
+     * Get the current Elm327Session for direct communication.
+     * Returns null if not connected.
+     */
+    fun getSession(): Elm327Session?
+    
+    /**
      * Query a single PID and return the calculated value.
      */
     suspend fun queryPid(spec: PidSpec): Result<Double>
@@ -95,6 +101,8 @@ class ObdRepositoryImpl(
     }
     
     override fun isConnected(): Boolean = session != null
+    
+    override fun getSession(): Elm327Session? = session
     
     override suspend fun queryPid(spec: PidSpec): Result<Double> = withContext(Dispatchers.IO) {
         runCatching {

@@ -4,6 +4,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.shlyahten.cvt.data.repository.ObdRepository
 import ru.shlyahten.cvt.obd.PidSpec
+import ru.shlyahten.cvt.obd.ObdPayloadDecoder
+import ru.shlyahten.cvt.obd.ObdException
+import ru.shlyahten.cvt.obd.ObdErrorType
+import android.util.Log
 
 /**
  * Use case for reading CVT temperature from the vehicle.
@@ -35,12 +39,90 @@ class ReadCvtTemperature(
             Formula.Temp2 -> PidSpec(
                 name = "CVT temp 2",
                 modeAndPid = "2103",
-                equation = "(0.0000286*N*N*N)+(-0.00951*N*N)+(1.46*N)+(-30.1)",
+                equation = "CUSTOM_CVT_TEMP_FORMULA",
                 units = "°C",
                 headerHex = "7E1",
             )
         }
-        obdRepository.queryPid(spec)
+        
+        if (formula == Formula.Temp2) {
+            calculateCvtTempMitsubishiLancerX()
+        } else {
+            obdRepository.queryPid(spec)
+        }
+    }
+    
+    /**
+     * Calculate CVT oil temperature for Mitsubishi Lancer X using PID "2103".
+     * 
+     * This method:
+     * 1. Parses multi-frame ISO-TP response for "2103" (header "7E9", response "61 03")
+     * 2. Extracts two bytes: A = byte[0], B = byte[1] after "61 03"
+     * 3. Computes N = (A << 8) | B
+     * 4. Applies polynomial formula using Horner's method:
+     *    T = 0.0000286*N^3 - 0.00951*N^2 + 1.46*N - 30.1
+     *    = ((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1
+     * 5. Returns temperature in °C as float
+     * 
+     * Handles ISO-TP reassembly (0x10, 0x21, 0x22 frames).
+     * Includes null/length safety checks and range validation (-20°C to 120°C).
+     */
+    private suspend fun calculateCvtTempMitsubishiLancerX(): Result<Double> = withContext(Dispatchers.IO) {
+        runCatching {
+            val modeAndPid = "2103"
+            val headerHex = "7E1"
+            
+            // Ensure header is set
+            val currentSession = obdRepository.getSession()
+            currentSession?.sendExpectOk("ATSH$headerHex", timeoutMs = 800)
+            
+            val response = currentSession?.send(modeAndPid, timeoutMs = 2000)
+            
+            if (response?.response?.isNoData == true) {
+                Log.w("CVT_TEMP", "NO DATA for $modeAndPid. Raw: ${response.response.raw}")
+                throw ObdException("NO DATA response for $modeAndPid", ObdErrorType.NoData)
+            }
+            if (response?.response?.isError == true) {
+                throw ObdException(response.response.normalized.ifBlank { "ELM error" }, ObdErrorType.ProtocolError)
+            }
+            
+            val normalizedResponse = response?.response?.normalized ?: ""
+            Log.d("CVT_TEMP", "Raw normalized response: $normalizedResponse")
+            
+            // Extract data bytes after "61 03"
+            val data = ObdPayloadDecoder.extractDataBytes(modeAndPid, normalizedResponse)
+                ?: throw ObdException("No payload for $modeAndPid", ObdErrorType.PayloadNotFound)
+            
+            // Safety check: need at least 2 bytes for temperature calculation
+            if (data.size < 2) {
+                Log.e("CVT_TEMP", "Insufficient data bytes: ${data.size}, expected >= 2")
+                throw ObdException("Insufficient data bytes: ${data.size}", ObdErrorType.PayloadNotFound)
+            }
+            
+            // Extract bytes A and B (first two bytes after "61 03")
+            val byteA = data[0].toInt() and 0xFF
+            val byteB = data[1].toInt() and 0xFF
+            
+            // Compute N = (A << 8) | B (big-endian 16-bit value)
+            val n = (byteA shl 8) or byteB
+            
+            Log.d("CVT_TEMP", "Byte A: 0x${byteA.toString(16).uppercase()}, Byte B: 0x${byteB.toString(16).uppercase()}, N: $n")
+            
+            // Apply polynomial formula using Horner's method for efficiency:
+            // T = 0.0000286*N^3 - 0.00951*N^2 + 1.46*N - 30.1
+            // Horner's form: T = ((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1
+            val nDouble = n.toDouble()
+            val temperature = ((0.0000286 * nDouble - 0.00951) * nDouble + 1.46) * nDouble - 30.1
+            
+            Log.d("CVT_TEMP", "Computed temperature: $temperature °C")
+            
+            // Validate against realistic range (-20°C to 120°C)
+            if (temperature < -20.0 || temperature > 120.0) {
+                Log.w("CVT_TEMP", "Temperature out of realistic range: $temperature °C")
+            }
+            
+            temperature
+        }
     }
 }
 
