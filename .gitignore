@@ -5,7 +5,7 @@
 *.obj
 *.out
 build/
-target/
+dist/
 
 # Dependencies
 .gradle/
@@ -14,13 +14,11 @@ libs/
 # Logs and temp files
 *.log
 *.tmp
-*.swp
 
 # Editors
 .idea/
-*.iml
-*.iws
-.vscode/
+*.swp
+*.swo
 
 # Environment
 .env
