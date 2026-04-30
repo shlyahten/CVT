@@ -41,28 +41,14 @@ object ObdPayloadDecoder {
                 val bytes = mutableListOf<Byte>()
                 var j = i + 2
                 
-                // Skip PCI byte if present (first frame indicator 0x10, consecutive frame 0x21+)
-                // ISO-TP single frame: first byte is length (0x02-0x07)
-                // ISO-TP first frame: starts with 0x10
-                // ISO-TP consecutive frames: start with 0x21, 0x22, etc.
+                // After finding responseMode + pidHex, all remaining tokens are payload data.
+                // PCI bytes (0x10, 0x21+, 0x02-0x07) appear BEFORE the service/PID in ISO-TP,
+                // so we should NOT filter bytes after "61 03".
+                // This preserves valid data bytes that may coincidentally match PCI patterns.
                 
                 while (j < tokens.size) {
                     val t = tokens[j]
                     val b = t.toHexByteOrNull() ?: break
-                    
-                    // Check if this looks like an ISO-TP PCI byte at the start
-                    if (bytes.isEmpty()) {
-                        // Single frame: 0x02-0x07 indicates length
-                        // First frame: 0x10
-                        // Consecutive frame: 0x21-0x2F
-                        if ((b.toInt() and 0xF0) == 0x10 || 
-                            (b.toInt() and 0xF0) == 0x20 ||
-                            (b.toInt() and 0xFF) in 0x02..0x07) {
-                            Log.d(TAG, "Skipping PCI byte: 0x${t}")
-                            j++
-                            continue
-                        }
-                    }
                     
                     bytes += b
                     j++

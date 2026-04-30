@@ -5,16 +5,32 @@
 *.obj
 *.out
 build/
+dist/
+
 # Dependencies
 .gradle/
+libs/
+
 # Logs and temp files
 *.log
 *.tmp
+
+# Editors
+.idea/
+*.swp
+*.swo
+
 # Environment
 .env
 .env.local
-.env.*
-# Editors
-.vscode/
-.idea/
+*.env.*
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# OS generated files
+.DS_Store
+Thumbs.db
 ```

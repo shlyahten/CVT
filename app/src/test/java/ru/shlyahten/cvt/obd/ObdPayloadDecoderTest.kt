@@ -88,47 +88,51 @@ class ObdPayloadDecoderTest {
     }
     
     @Test
-    fun `extractDataBytes skips ISO-TP single frame length byte`() {
+    fun `extractDataBytes preserves all data bytes after 61 03`() {
         val modeAndPid = "2103"
-        // ISO-TP single frame: first byte after 61 03 is length (0x04 = 4 data bytes)
+        // All bytes after "61 03" are payload data - do not skip any.
+        // Even if a byte looks like a PCI pattern (0x02-0x07, 0x10, 0x21), it's valid data.
         val normalized = "7E9 04 61 03 04 AA BB CC DD"
         
         val data = ObdPayloadDecoder.extractDataBytes(modeAndPid, normalized)
         
         assertNotNull(data)
-        assertEquals(4, data!!.size)
-        assertEquals(0xAA.toByte(), data[0])
-        assertEquals(0xBB.toByte(), data[1])
-        assertEquals(0xCC.toByte(), data[2])
-        assertEquals(0xDD.toByte(), data[3])
+        assertEquals(5, data!!.size)
+        assertEquals(0x04.toByte(), data[0])  // First data byte, NOT a length indicator
+        assertEquals(0xAA.toByte(), data[1])
+        assertEquals(0xBB.toByte(), data[2])
+        assertEquals(0xCC.toByte(), data[3])
+        assertEquals(0xDD.toByte(), data[4])
     }
     
     @Test
-    fun `extractDataBytes skips ISO-TP first frame PCI byte 0x10`() {
+    fun `extractDataBytes preserves data bytes even if they match 0x10 pattern`() {
         val modeAndPid = "2103"
-        // ISO-TP first frame: starts with 0x10
+        // Byte 0x10 after "61 03" is valid data, not a PCI byte
         val normalized = "7E9 10 61 03 10 AA BB CC DD"
         
         val data = ObdPayloadDecoder.extractDataBytes(modeAndPid, normalized)
         
         assertNotNull(data)
-        assertEquals(4, data!!.size)
-        assertEquals(0xAA.toByte(), data[0])
-        assertEquals(0xBB.toByte(), data[1])
+        assertEquals(5, data!!.size)
+        assertEquals(0x10.toByte(), data[0])  // Valid data byte
+        assertEquals(0xAA.toByte(), data[1])
+        assertEquals(0xBB.toByte(), data[2])
     }
     
     @Test
-    fun `extractDataBytes skips ISO-TP consecutive frame PCI byte 0x21`() {
+    fun `extractDataBytes preserves data bytes even if they match 0x21 pattern`() {
         val modeAndPid = "2103"
-        // ISO-TP consecutive frame: starts with 0x21
+        // Byte 0x21 after "61 03" is valid data, not a PCI byte
         val normalized = "7E9 21 61 03 21 AA BB CC DD"
         
         val data = ObdPayloadDecoder.extractDataBytes(modeAndPid, normalized)
         
         assertNotNull(data)
-        assertEquals(4, data!!.size)
-        assertEquals(0xAA.toByte(), data[0])
-        assertEquals(0xBB.toByte(), data[1])
+        assertEquals(5, data!!.size)
+        assertEquals(0x21.toByte(), data[0])  // Valid data byte
+        assertEquals(0xAA.toByte(), data[1])
+        assertEquals(0xBB.toByte(), data[2])
     }
     
     @Test
