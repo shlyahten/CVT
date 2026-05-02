@@ -1,12 +1,9 @@
 package ru.shlyahten.cvt
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Bundle
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,8 +14,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -33,15 +31,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import ru.shlyahten.cvt.R
+import kotlinx.coroutines.launch
 import ru.shlyahten.cvt.ui.CvtTempFormula
 import ru.shlyahten.cvt.ui.MainViewModel
 import ru.shlyahten.cvt.ui.theme.CVTTheme
@@ -53,15 +53,12 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val allGranted = permissions.values.all { it }
             vm.setHasConnectPermission(allGranted)
-            if (allGranted) {
-                vm.refreshBondedDevices()
-            }
+            if (allGranted) vm.refreshBondedDevices()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
-        vm.initialize(this)
         enableEdgeToEdge()
         setContent {
             CVTTheme {
@@ -92,8 +89,11 @@ fun MainScreen(
     vm: MainViewModel = viewModel(),
 ) {
     val ctx = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     val state by vm.state.collectAsState()
 
+    // Single init point
     LaunchedEffect(Unit) {
         vm.initialize(ctx)
         val granted = if (Build.VERSION.SDK_INT < 31) {
@@ -119,24 +119,27 @@ fun MainScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+
             if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(R.string.screen_main_permission_message))
-                        Button(onClick = requestBtPermission) { Text(stringResource(R.string.screen_main_permission_button)) }
+                        Button(onClick = requestBtPermission) {
+                            Text(stringResource(R.string.screen_main_permission_button))
+                        }
                     }
                 }
             }
 
+            // Devices
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.screen_main_device_title), style = MaterialTheme.typography.titleMedium)
+
                     if (state.bondedDevices.isEmpty()) {
                         Text(stringResource(R.string.screen_main_no_paired_devices))
                     } else {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             state.bondedDevices.forEach { d ->
                                 val selected = d.address == state.selectedDeviceAddress
                                 FilterChip(
@@ -147,31 +150,42 @@ fun MainScreen(
                             }
                         }
                     }
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             enabled = !state.isConnected && !state.isConnecting,
                             onClick = { vm.connect(ctx) },
-                        ) { Text(if (state.isConnecting) stringResource(R.string.screen_main_button_connecting) else stringResource(R.string.screen_main_button_connect)) }
+                        ) {
+                            Text(
+                                if (state.isConnecting)
+                                    stringResource(R.string.screen_main_button_connecting)
+                                else
+                                    stringResource(R.string.screen_main_button_connect)
+                            )
+                        }
+
                         Button(
                             enabled = state.isConnected || state.isConnecting,
                             onClick = { vm.disconnect() },
-                        ) { Text(stringResource(R.string.screen_main_button_disconnect)) }
-                        Button(onClick = { vm.refreshBondedDevices() }) { Text(stringResource(R.string.screen_main_button_refresh)) }
+                        ) {
+                            Text(stringResource(R.string.screen_main_button_disconnect))
+                        }
+
+                        Button(onClick = { vm.refreshBondedDevices() }) {
+                            Text(stringResource(R.string.screen_main_button_refresh))
+                        }
                     }
+
                     Text(stringResource(R.string.screen_main_status_label, state.status))
                 }
             }
 
+            // CVT temp
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.screen_main_cvt_temp_title), style = MaterialTheme.typography.titleMedium)
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = state.cvtTempFormula == CvtTempFormula.Temp1,
                             onClick = { vm.setFormula(CvtTempFormula.Temp1) },
@@ -183,41 +197,47 @@ fun MainScreen(
                             label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_2)) },
                         )
                     }
+
                     val t = state.cvtTempC
                     Text(
-                        text = if (t == null) stringResource(R.string.screen_main_cvt_temp_no_data) else stringResource(R.string.screen_main_cvt_temp_value, t),
+                        text = if (t == null)
+                            stringResource(R.string.screen_main_cvt_temp_no_data)
+                        else
+                            stringResource(R.string.screen_main_cvt_temp_value, t),
                         style = MaterialTheme.typography.displaySmall,
                     )
                 }
             }
 
+            // Oil
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.screen_main_oil_title), style = MaterialTheme.typography.titleMedium)
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(enabled = state.isConnected, onClick = { vm.readOilDegradationOnce() }) {
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            enabled = state.isConnected,
+                            onClick = { vm.readOilDegradationOnce() }
+                        ) {
                             Text(stringResource(R.string.screen_main_oil_button_read))
                         }
-                        Text(text = state.oilDegradation?.toString() ?: stringResource(R.string.screen_main_oil_no_data))
+                        Text(state.oilDegradation?.toString()
+                            ?: stringResource(R.string.screen_main_oil_no_data))
                     }
                 }
             }
 
-            if (!state.lastRaw.isNullOrBlank()) {
+            // Raw
+            state.lastRaw?.takeIf { it.isNotBlank() }?.let { raw ->
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(R.string.screen_main_raw_title), style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            text = state.lastRaw ?: "",
-                            modifier = Modifier.horizontalScroll(rememberScrollState())
-                        )
+                        Text(raw)
                     }
                 }
             }
 
+            // Log
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
@@ -225,37 +245,40 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(stringResource(R.string.screen_main_journal_title), style = MaterialTheme.typography.titleMedium)
+
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {
                                     val logText = state.logEntries.joinToString("\n")
                                     if (logText.isNotEmpty()) {
-                                        val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText(ctx.getString(R.string.screen_main_journal_clipboard_label), logText))
+                                        scope.launch {
+                                            clipboard.setText(AnnotatedString(logText))
+                                        }
                                     }
                                 },
                                 enabled = state.logEntries.isNotEmpty(),
                             ) {
                                 Text(stringResource(R.string.screen_main_journal_button_copy))
                             }
+
                             Button(
-                                onClick = { vm.clearLogPublic() },
+                                onClick = vm::clearLogPublic,
                                 enabled = state.logEntries.isNotEmpty(),
                             ) {
                                 Text(stringResource(R.string.screen_main_journal_button_clear))
                             }
                         }
                     }
-                    androidx.compose.foundation.lazy.LazyColumn(
+
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp)
-                            .horizontalScroll(rememberScrollState()),
+                            .heightIn(max = 300.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        items(state.logEntries.size) { index ->
+                        items(state.logEntries) { entry ->
                             Text(
-                                text = state.logEntries[index],
+                                text = entry,
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             )
@@ -271,6 +294,10 @@ fun MainScreen(
 @Composable
 fun GreetingPreview() {
     CVTTheme {
-        MainScreen()
+        MainScreen(
+            modifier = Modifier.fillMaxSize(),
+            requestBtPermission = {},
+            vm = viewModel()
+        )
     }
 }

@@ -23,39 +23,37 @@ class Elm327Session(
     fun initialize(headerHex: String = "7E1") {
         Log.d(TAG, "=== Starting ELM327 initialization ===")
         Log.d(TAG, "Header: $headerHex")
-        
+
         // Reset + basic setup. Some adapters are slow; we keep it conservative.
         Log.d(TAG, "Sending ATZ (reset)...")
         sendExpectOk("ATZ", timeoutMs = 3000)
-        
+
         Log.d(TAG, "Sending ETE0 (echo off)...")
         sendExpectOk("ATE0")
-        
-        Log.d(TAG, "Sending ATL0 (linefeeds off)...")
-        sendExpectOk("ATL0")
-        
+
+        Log.d(TAG, "Sending ATL1 (linefeeds on)...")
+        sendExpectOk("ATL1") // ATH1/ATL1 per requirements
+
         Log.d(TAG, "Sending ATS0 (spaces off)...")
         sendExpectOk("ATS0")
-        
+
         Log.d(TAG, "Sending ATH1 (headers on)...")
         sendExpectOk("ATH1") // headers on; helps debugging and multi-ECU answers
-        
+
         // ELM327 v1.5 specific settings for CAN communication
-        Log.d(TAG, "Sending ATST0A (timeout 10x4ms=40ms for CAN)...")
-        sendExpectOk("ATST0A") // optimal timeout for CVT CAN bus
-        
+        Log.d(TAG, "Sending ATST64 (timeout 64ms for CAN)...")
+        sendExpectOk("ATST64") // optimal timeout for CVT CAN bus
+
         Log.d(TAG, "Sending ATAT1 (adaptive timing on)...")
         sendExpectOk("ATAT1") // adaptive timeout
-        
-        Log.d(TAG, "Sending ATCAF0 (CAN auto format off, 11-bit headers)...")
-        sendExpectOk("ATCAF0") // 11-bit CAN header format without auto-format
-        
-        Log.d(TAG, "Sending ATSP0 (auto protocol)...")
-        sendExpectOk("ATSP0") // auto protocol
-        
+
+        Log.d(TAG, "Sending ATSP6 (ISO 15765-4 CAN)...")
+        sendExpectOk("ATSP6") // ISO 15765-4 CAN protocol
+
         Log.d(TAG, "Sending ATSH$headerHex...")
+        // Using string interpolation correctly for the command
         sendExpectOk("ATSH$headerHex")
-        
+
         Log.d(TAG, "=== ELM327 initialization complete ===")
     }
 
@@ -128,13 +126,9 @@ class Elm327Session(
         Log.d(TAG, "Final response string (${result.length} chars): '$result'")
         return result
     }
-    private fun StringBuilder.contains(s: String): Boolean {
-        return indexOf(s) >= 0
-    }
 
     override fun close() {
         runCatching { input.close() }
         runCatching { output.close() }
     }
 }
-

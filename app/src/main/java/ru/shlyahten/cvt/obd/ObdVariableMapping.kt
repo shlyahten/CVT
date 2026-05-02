@@ -6,18 +6,19 @@ object ObdVariableMapping {
      *
      * - AA, AB, AC, AD ... represent bytes 1..n after the response header (61 xx)
      * - A, B, C, D ... are aliases to AA, AB, AC, AD ...
-     * - N aliases AA (per your CSV usage)
+     * - N is a special variable used in formulas. For Mitsubishi Lancer X CVT,
+     *   N refers to the byte at index 10 (AK).
      */
-    fun fromDataBytes(data: ByteArray): Map<String, Double> {
+    fun fromDataBytes(data: ByteArray, isLancerX: Boolean = false): Map<String, Double> {
         val baseMap = HashMap<String, Double>(64)
-        
+
         for (i in data.indices) {
             val v = (data[i].toInt() and 0xFF).toDouble()
             val idx = i + 1
             val nameAA = toDoubleLetter(idx) // AA, AB, AC...
             baseMap[nameAA] = v
         }
-        
+
         // A/B/C/D aliases
         val single = listOf("A", "B", "C", "D", "E", "F", "G", "H")
         for ((i, s) in single.withIndex()) {
@@ -25,11 +26,16 @@ object ObdVariableMapping {
             val aa = toDoubleLetter(idx)
             baseMap[s] = baseMap[aa] ?: 0.0
         }
-        
-        // N alias to AA
-        baseMap["N"] = baseMap["AA"] ?: 0.0
 
-        // Return a map with default value 0.0 for any missing key
+        // N alias logic
+        if (isLancerX && data.size >= 11) {
+            // For Lancer X, N is the byte at index 10 (AK).
+            baseMap["N"] = baseMap["AK"] ?: 0.0
+        } else {
+            // Default: N aliases AA
+            baseMap["N"] = baseMap["AA"] ?: 0.0
+        }
+
         return baseMap.withDefault { 0.0 }
     }
 
@@ -42,4 +48,3 @@ object ObdVariableMapping {
         return "" + (a + first).toChar() + (a + second).toChar()
     }
 }
-

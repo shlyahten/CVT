@@ -68,7 +68,7 @@ cd CVT
 
 ## 🚀 Использование
 
-1. **Спарьте ELM327** в настройках Bluetooth Android
+1. **Спарьте ELM327** в настройades Bluetooth Android
    - PIN по умолчанию: `1234` или `0000`
 2. **Запустите приложение**
 3. **Выдайте разрешение** `BLUETOOTH_CONNECT` (Android 12+)
@@ -208,5 +208,5 @@ MIT License — см. файл [LICENSE](LICENSE), если присутству
 
 ## 📬 Контакты
 
-Автор: [shlyahten](https://github.com/shlyahten)  
+Автор: [shlyahten](https://github.com/shlyahten)
 Репозиторий: [github.com/shlyahten/CVT](https://github.com/shlyahten/CVT)
