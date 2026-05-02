@@ -6,8 +6,8 @@ object ObdVariableMapping {
      *
      * - AA, AB, AC, AD ... represent bytes 1..n after the response header (61 xx)
      * - A, B, C, D ... are aliases to AA, AB, AC, AD ...
-     * - N is a special variable used in formulas. For Mitsubishi Lancer X CVT,
-     *   N refers to the byte at index 10 (AK).
+     * - N is a special variable used in formulas. For Mitsubishi Lancer X CVT temperature:
+     *   N = (AA << 8) | AB  (16-bit value from first two data bytes after 61 03)
      */
     fun fromDataBytes(data: ByteArray, isLancerX: Boolean = false): Map<String, Double> {
         val baseMap = HashMap<String, Double>(64)
@@ -27,12 +27,16 @@ object ObdVariableMapping {
             baseMap[s] = baseMap[aa] ?: 0.0
         }
 
-        // N alias logic
-        if (isLancerX && data.size >= 11) {
-            // For Lancer X, N is the byte at index 10 (AK).
-            baseMap["N"] = baseMap["AK"] ?: 0.0
+        // N calculation per algorithm:
+        // N = (A << 8) | B where A=data[0](AA), B=data[1](AB)
+        // This forms a 16-bit value from the first two bytes after "61 03"
+        if (data.size >= 2) {
+            val a = data[0].toInt() and 0xFF
+            val b = data[1].toInt() and 0xFF
+            val n = (a shl 8) or b
+            baseMap["N"] = n.toDouble()
         } else {
-            // Default: N aliases AA
+            // Fallback: N aliases AA if not enough data
             baseMap["N"] = baseMap["AA"] ?: 0.0
         }
 

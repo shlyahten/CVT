@@ -35,11 +35,48 @@ class ObdVariableMappingTest {
         assertEquals(255.0, vars["AD"]!!, 0.001)
         
         // Aliases
-        assertEquals(64.0, vars["N"]!!, 0.001)
         assertEquals(64.0, vars["A"]!!, 0.001)
         assertEquals(128.0, vars["B"]!!, 0.001)
         assertEquals(192.0, vars["C"]!!, 0.001)
         assertEquals(255.0, vars["D"]!!, 0.001)
+        
+        // N = (AA << 8) | AB = (64 << 8) | 128 = 16384 + 128 = 16512
+        assertEquals(16512.0, vars["N"]!!, 0.001)
+    }
+
+    @Test
+    fun `test N calculation per algorithm (AA << 8) | AB`() {
+        // Test case: AA=0x15, AB=0x7F => N = 0x157F = 5503 (from algorithm example)
+        val data = byteArrayOf(
+            0x15.toByte(), // AA = 21
+            0x7F.toByte()  // AB = 127
+        )
+
+        val vars = ObdVariableMapping.fromDataBytes(data)
+        
+        assertEquals(21.0, vars["AA"]!!, 0.001)
+        assertEquals(127.0, vars["AB"]!!, 0.001)
+        
+        // N = (0x15 << 8) | 0x7F = 0x157F = 5503
+        assertEquals(5503.0, vars["N"]!!, 0.001)
+    }
+
+    @Test
+    fun `test temperature calculation with N=5503`() {
+        // From algorithm example: N=5503 should give a realistic temperature
+        val data = byteArrayOf(
+            0x15.toByte(), // AA
+            0x7F.toByte()  // AB
+        )
+
+        val vars = ObdVariableMapping.fromDataBytes(data)
+        val n = vars["N"]!!
+        
+        // T = ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1
+        val temp = ((0.0000286 * n - 0.00951) * n + 1.46) * n - 30.1
+        
+        // Temperature should be in realistic range [-30; 120]
+        assert(temp >= -30.0 && temp <= 120.0) { "Temperature $temp out of range" }
     }
 
     @Test

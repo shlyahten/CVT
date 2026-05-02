@@ -5,34 +5,55 @@
 *.obj
 *.out
 build/
-dist/
+target/
 
 # Dependencies
 .gradle/
-libs/
+node_modules/
+venv/
+.venv/
+__pycache__/
 
 # Logs and temp files
 *.log
 *.tmp
-
-# Editors
-.idea/
 *.swp
-*.swo
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Coverage reports
+# Editors
+.vscode/
+.idea/
+
+# Coverage
 coverage/
 htmlcov/
 .coverage
 
-# OS generated files
-.DS_Store
-Thumbs.db
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
-local.properties
-/.qwen

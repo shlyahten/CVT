@@ -8,16 +8,23 @@ import android.util.Log
  * For ModeAndPID=2103, ECU response payload typically contains "61 03 <data...>".
  * Depending on ELM settings and adapter, headers like "7E9 06 61 03 ..." may appear.
  *
- * Handles multi-frame ISO-TP responses:
- * - 0x10: First frame (contains PCI byte, length info)
- * - 0x21, 0x22, etc.: Consecutive frames
+ * Handles multi-frame ISO-TP responses according to the algorithm:
+ * - First frame (PCI 0x10): Remove first 2 bytes (PCI + length)
+ * - Continuation frames (PCI 0x21, 0x22, etc.): Remove first byte (PCI)
  */
 object ObdPayloadDecoder {
     private const val TAG = "ObdPayloadDecoder"
 
     /**
      * Reassembles multi-frame ISO-TP responses from raw ELM lines.
-     * Expected format: Lines starting with a header (e.g., 7E9) followed by PCI and data.
+     * Expected format: Lines starting with CAN ID (e.g., 7E9) followed by PCI and data.
+     * 
+     * Algorithm:
+     * 1. Ignore CAN ID (7E9)
+     * 2. Remove PCI bytes:
+     *    - 0x10 (first frame): remove first 2 bytes (PCI + length info)
+     *    - 0x21, 0x22, etc. (continuation): remove first byte (PCI)
+     * 3. Assemble payload from remaining data bytes
      */
     fun parseIsoTpMultiFrame(rawLines: List<String>): ByteArray? {
         if (rawLines.isEmpty()) return null
@@ -26,48 +33,53 @@ object ObdPayloadDecoder {
             line.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.map { it.uppercase() }
         }
 
-        // The first frame should contain the response header (e.g., 61 03 or similar)
-        // In a multi-frame ISO-TP, we look for the sequence that starts with a service/PID response.
-        // However, since ELM returns lines like "7E9 10 12 61 03 ...", we need to find where the data starts.
-
         val assembledPayload = mutableListOf<Byte>()
+        var i = 0
 
-        // We look for the start of the payload: the service/PID response (e.g., 61 03)
-        // In multi-frame, the first frame might have PCI 0x10, then data.
-        // But ELM often presents it as "7E9 10 12 61 03 ..." where 10 is PCI and 12 is length? 
-        // Actually, for ISO-TP: 10 [len] [data...] -> 21 [data...] -> 22 [data...]
-        
-        // Let's find the index of the response mode/PID (e.g., "61", "03")
-        // We'll iterate through tokens to find the first occurrence of a valid response pattern.
-        // For simplicity and based on user requirements, we assume the payload starts after the 
-        // service/PID tokens in the sequence.
-
-        var startIndex = -1
-        for (i in 0 until allTokens.size - 1) {
-            // We look for a pattern where tokens[i] is responseMode and tokens[i+1] is pidHex
-            // This is slightly heuristic but works with how ELM outputs multi-frame responses.
-            // For 2103, we expect "61" "03".
-            if (allTokens[i].length == 2 && allTokens[i+1].length == 2) {
-                val mode = allTokens[i].toIntOrNull(16) ?: continue
-                val pid = allTokens[i+1].toIntOrNull(16) ?: continue
-                
-                // Check if it's a response (Mode + 0x40)
-                if (mode == 0x61 && pid == 0x03) { // Specific to 2103 for now, or generalize?
-                    startIndex = i + 2
-                    break
-                }
+        while (i < allTokens.size) {
+            // Skip CAN ID (3 or 4 hex chars like "7E9" or "7EA")
+            if (allTokens[i].length >= 3 && allTokens[i].all { c -> c.isDigit() || c in 'A'..'F' }) {
+                i++
+                continue
             }
-        }
 
-        // If we can't find the specific "61 03" pattern, fallback to a more generic search
-        if (startIndex == -1) {
-             Log.w(TAG, "Could not find '61 03' pattern in tokens: $allTokens")
-             return null
-        }
+            // Check for PCI byte
+            if (allTokens[i].length == 2) {
+                val pci = allTokens[i].toIntOrNull(16) ?: run { i++; continue }
 
-        for (j in startIndex until allTokens.size) {
-            val b = allTokens[j].toHexByteOrNull() ?: break
-            assembledPayload.add(b)
+                when (pci) {
+                    0x10 -> {
+                        // First frame: skip PCI (0x10) and length byte
+                        i += 2
+                        // Add remaining data bytes from this frame until next CAN ID or PCI
+                        while (i < allTokens.size) {
+                            if (allTokens[i].length >= 3) break // Next CAN ID
+                            val nextVal = allTokens[i].toIntOrNull(16) ?: break
+                            if (nextVal in 0x21..0x2F) break // Next frame PCI
+                            assembledPayload.add(nextVal.toByte())
+                            i++
+                        }
+                    }
+                    in 0x21..0x2F -> {
+                        // Continuation frame: skip PCI byte only
+                        i++
+                        // Add data bytes from this frame
+                        while (i < allTokens.size) {
+                            if (allTokens[i].length >= 3) break // Next CAN ID
+                            val nextVal = allTokens[i].toIntOrNull(16) ?: break
+                            if (nextVal in 0x21..0x2F) break // Next frame PCI
+                            assembledPayload.add(nextVal.toByte())
+                            i++
+                        }
+                    }
+                    else -> {
+                        // Not a PCI byte, might be data or other token
+                        i++
+                    }
+                }
+            } else {
+                i++
+            }
         }
 
         return if (assembledPayload.isNotEmpty()) assembledPayload.toByteArray() else null
@@ -77,6 +89,9 @@ object ObdPayloadDecoder {
      * @param modeAndPid e.g. "2103"
      * @param normalized ELM response after cleaning (spaces between tokens)
      * @return bytes after the response header bytes (e.g. after 61 03), or null if not found.
+     * 
+     * This method handles both single-frame and multi-frame responses that have been
+     * pre-processed by the ELM parser into a normalized string.
      */
     fun extractDataBytes(modeAndPid: String, normalized: String): ByteArray? {
         val req = modeAndPid.trim().uppercase()
@@ -93,6 +108,8 @@ object ObdPayloadDecoder {
 
         Log.d(TAG, "extractDataBytes: modeAndPid=$modeAndPid, tokens=${tokens.joinToString(" ")}")
 
+        // First, try to find the pattern "responseMode pidHex" directly in the tokens
+        // This handles cases where multi-frame has already been assembled or is single-frame
         for (i in 0 until tokens.size - 1) {
             if (tokens[i] == responseMode && tokens[i + 1] == pidHex) {
                 val bytes = mutableListOf<Byte>()
@@ -100,8 +117,11 @@ object ObdPayloadDecoder {
 
                 while (j < tokens.size) {
                     val t = tokens[j]
+                    // Skip potential PCI bytes that might appear in multi-frame raw output
+                    // But keep them if they are actual data (after we've found 61 03)
                     val b = t.toHexByteOrNull() ?: break
-
+                    
+                    // After finding 61 03, all subsequent valid hex bytes are data
                     bytes += b
                     j++
                 }

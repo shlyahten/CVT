@@ -26,6 +26,8 @@ class ReadCvtTemperature(
      * @return Result containing the temperature value in Celsius, or an error.
      */
     suspend fun execute(formula: Formula): Result<Double> = withContext(Dispatchers.IO) {
+        // Both formulas use the same PID but different equations
+        // Per algorithm: N = (AA << 8) | AB, T = ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1
         val spec = when (formula) {
             Formula.Temp1 -> PidSpec(
                 name = "CVT temp 1",
@@ -37,9 +39,10 @@ class ReadCvtTemperature(
             Formula.Temp2 -> PidSpec(
                 name = "CVT temp 2",
                 modeAndPid = "2103",
-                equation = "(0.0000286*(N^3))+(-0.00951*(N^2))+(1.46*N)+(-30.1)",
+                // Optimized Horner form per algorithm: ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1
+                equation = "((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1",
                 units = "°C",
-                headerHex = "7E9",
+                headerHex = "7E1",
             )
         }
 
@@ -53,11 +56,12 @@ class ReadCvtTemperature(
             delay(500)
             result = obdRepository.queryPid(spec)
         }
-        // Final range validation for Temp2 if it was calculated via queryPid
-        if (result.isSuccess && formula == Formula.Temp2) {
+        
+        // Final range validation per algorithm: T ∈ [-30; 120]
+        if (result.isSuccess) {
             val temp = result.getOrThrow()
-            if (temp < -50.0 || temp > 250.0) {
-                Log.w("CVT_TEMP", "Temperature out of realistic range: $temp °C")
+            if (temp < -30.0 || temp > 120.0) {
+                Log.w("CVT_TEMP", "Temperature out of realistic range: $temp °C (expected -30 to 120)")
             }
         }
 
