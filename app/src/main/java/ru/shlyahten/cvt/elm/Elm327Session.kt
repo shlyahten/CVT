@@ -4,7 +4,6 @@ import android.util.Log
 import java.io.Closeable
 import java.io.InputStream
 import java.io.OutputStream
-import kotlin.math.min
 
 class Elm327Session(
     private val input: InputStream,
@@ -24,34 +23,23 @@ class Elm327Session(
         Log.d(TAG, "=== Starting ELM327 initialization ===")
         Log.d(TAG, "Header: $headerHex")
 
-        // Reset + basic setup. Some adapters are slow; we keep it conservative.
+        // Reset + basic setup per algorithm requirements
         Log.d(TAG, "Sending ATZ (reset)...")
         sendExpectOk("ATZ", timeoutMs = 3000)
 
-        Log.d(TAG, "Sending ETE0 (echo off)...")
-        sendExpectOk("ATE0")
-
-        Log.d(TAG, "Sending ATL1 (linefeeds on)...")
-        sendExpectOk("ATL1") // ATH1/ATL1 per requirements
-
-        Log.d(TAG, "Sending ATS0 (spaces off)...")
-        sendExpectOk("ATS0")
+        Log.d(TAG, "Sending ATSP6 (ISO 15765-4 CAN)...")
+        sendExpectOk("ATSP6") // ISO 15765-4 CAN (11bit 500k)
 
         Log.d(TAG, "Sending ATH1 (headers on)...")
-        sendExpectOk("ATH1") // headers on; helps debugging and multi-ECU answers
+        sendExpectOk("ATH1") // включить заголовки
 
-        // ELM327 v1.5 specific settings for CAN communication
-        Log.d(TAG, "Sending ATST64 (timeout 64ms for CAN)...")
-        sendExpectOk("ATST64") // optimal timeout for CVT CAN bus
+        Log.d(TAG, "Sending ATL1 (linefeeds on)...")
+        sendExpectOk("ATL1") // включить переносы строк
 
-        Log.d(TAG, "Sending ATAT1 (adaptive timing on)...")
-        sendExpectOk("ATAT1") // adaptive timeout
-
-        Log.d(TAG, "Sending ATSP6 (ISO 15765-4 CAN)...")
-        sendExpectOk("ATSP6") // ISO 15765-4 CAN protocol
+        Log.d(TAG, "Sending ATPC (clear buffer)...")
+        sendExpectOk("ATPC") // очистить буфер
 
         Log.d(TAG, "Sending ATSH$headerHex...")
-        // Using string interpolation correctly for the command
         sendExpectOk("ATSH$headerHex")
 
         Log.d(TAG, "=== ELM327 initialization complete ===")
