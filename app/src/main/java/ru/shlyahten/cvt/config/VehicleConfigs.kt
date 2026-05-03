@@ -7,7 +7,9 @@ package ru.shlyahten.cvt.config
 data class PidConfig(
     val modeAndPid: String,           // e.g. "2103"
     val headerHex: String = "7E1",    // ECU header
-    val formulas: Map<String, String> // Named formulas for this PID
+    val formulas: Map<String, String>, // Named formulas for this PID
+    val valueIndex: Int = 0,
+    val valueLength: Int = 1
 )
 
 /**
@@ -33,7 +35,8 @@ object VehicleConfigs {
             formulas = mapOf(
                 "Temp1" to "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
                 "Temp2" to "((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1"
-            )
+            ),
+            valueIndex = 2
         ),
         oilDegradationPid = PidConfig(
             modeAndPid = "2110",

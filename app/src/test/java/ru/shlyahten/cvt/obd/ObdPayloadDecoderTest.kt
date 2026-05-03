@@ -138,19 +138,39 @@ class ObdPayloadDecoderTest {
     @Test
     fun `extractDataBytes extracts correct bytes for CVT temp calculation`() {
         val modeAndPid = "2103"
-        // Simulated Mitsubishi Lancer X response: 61 03 followed by two bytes for temperature
-        // Example: N = 0x03E8 (1000 decimal) should give reasonable temperature
-        val normalized = "7E9 04 61 03 03 E8"
+        val normalized = "61 03 02 02 15 7F EA 00 00 01 01 FD 78 2F 25 71 00 00"
         
         val data = ObdPayloadDecoder.extractDataBytes(modeAndPid, normalized)
         
         assertNotNull(data)
-        assertEquals(2, data!!.size)
-        assertEquals(0x03.toByte(), data[0])
-        assertEquals(0xE8.toByte(), data[1])
+        assertEquals(16, data!!.size)
+        assertEquals(0x02.toByte(), data[0])
+        assertEquals(0x02.toByte(), data[1])
+        assertEquals(0x15.toByte(), data[2])
         
-        // Verify N calculation: (0x03 << 8) | 0xE8 = 0x03E8 = 1000
-        val n = ((data[0].toInt() and 0xFF) shl 8) or (data[1].toInt() and 0xFF)
-        assertEquals(1000, n)
+        val n = data[2].toInt() and 0xFF
+        assertEquals(21, n)
+    }
+
+    @Test
+    fun `parseIsoTpMultiFrame reassembles 2103 payload and preserves data index`() {
+        val rawLines = listOf(
+            "7E9 10 12 61 03 02 02 15 7F",
+            "7E9 21 EA 00 00 01 01 FD 78",
+            "7E9 22 2F 25 71 00 00 00 00"
+        )
+
+        val payload = ObdPayloadDecoder.parseIsoTpMultiFrame(rawLines)
+
+        assertNotNull(payload)
+        assertEquals(18, payload!!.size)
+        assertEquals(0x61.toByte(), payload[0])
+        assertEquals(0x03.toByte(), payload[1])
+
+        val data = ObdPayloadDecoder.extractDataBytes("2103", payload.joinToString(" ") { "%02X".format(it) })
+
+        assertNotNull(data)
+        assertEquals(16, data!!.size)
+        assertEquals(0x15.toByte(), data[2])
     }
 }

@@ -124,7 +124,7 @@ class ObdRepositoryImpl(
             val data = ObdPayloadDecoder.extractDataBytes(spec.modeAndPid, response.response.normalized)
                 ?: return@runCatching throw ObdException("No payload for ${spec.modeAndPid}", ObdErrorType.PayloadNotFound)
             
-            val variables = ObdVariableMapping.fromDataBytes(data)
+            val variables = ObdVariableMapping.fromDataBytes(data, spec.valueIndex)
             ExpressionEvaluator.eval(spec.equation, variables)
         }
     }

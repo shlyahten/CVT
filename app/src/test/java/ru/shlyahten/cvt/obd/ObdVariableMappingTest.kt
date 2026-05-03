@@ -6,7 +6,7 @@ import org.junit.Test
 class ObdVariableMappingTest {
 
     @Test
-    fun `test AA and N mapping from first data byte`() {
+    fun `test AA and default N mapping from first data byte`() {
         // Simulate response data bytes after header (e.g., 61 03 XX YY ZZ)
         val data = byteArrayOf(0x50.toByte()) // Single byte = 80 decimal
         
@@ -40,36 +40,37 @@ class ObdVariableMappingTest {
         assertEquals(192.0, vars["C"]!!, 0.001)
         assertEquals(255.0, vars["D"]!!, 0.001)
         
-        // N = (AA << 8) | AB = (64 << 8) | 128 = 16384 + 128 = 16512
-        assertEquals(16512.0, vars["N"]!!, 0.001)
+        assertEquals(64.0, vars["N"]!!, 0.001)
     }
 
     @Test
-    fun `test N calculation per algorithm (AA << 8) | AB`() {
-        // Test case: AA=0x15, AB=0x7F => N = 0x157F = 5503 (from algorithm example)
+    fun `test N calculation uses configured single byte index`() {
         val data = byteArrayOf(
-            0x15.toByte(), // AA = 21
-            0x7F.toByte()  // AB = 127
+            0x02.toByte(), // AA
+            0x02.toByte(), // AB
+            0x15.toByte(), // AC = N for PID 2103
+            0x7F.toByte()
         )
 
-        val vars = ObdVariableMapping.fromDataBytes(data)
+        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = 2)
         
-        assertEquals(21.0, vars["AA"]!!, 0.001)
-        assertEquals(127.0, vars["AB"]!!, 0.001)
+        assertEquals(2.0, vars["AA"]!!, 0.001)
+        assertEquals(2.0, vars["AB"]!!, 0.001)
+        assertEquals(21.0, vars["AC"]!!, 0.001)
         
-        // N = (0x15 << 8) | 0x7F = 0x157F = 5503
-        assertEquals(5503.0, vars["N"]!!, 0.001)
+        assertEquals(21.0, vars["N"]!!, 0.001)
     }
 
     @Test
-    fun `test temperature calculation with N=5503`() {
-        // From algorithm example: N=5503 should give a realistic temperature
+    fun `test temperature calculation with N from third data byte`() {
         val data = byteArrayOf(
-            0x15.toByte(), // AA
-            0x7F.toByte()  // AB
+            0x02.toByte(),
+            0x02.toByte(),
+            0x15.toByte(),
+            0x7F.toByte()
         )
 
-        val vars = ObdVariableMapping.fromDataBytes(data)
+        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = 2)
         val n = vars["N"]!!
         
         // T = ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1

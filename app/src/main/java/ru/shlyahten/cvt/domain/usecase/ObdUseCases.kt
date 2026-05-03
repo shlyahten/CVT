@@ -26,8 +26,8 @@ class ReadCvtTemperature(
      * @return Result containing the temperature value in Celsius, or an error.
      */
     suspend fun execute(formula: Formula): Result<Double> = withContext(Dispatchers.IO) {
-        // Both formulas use the same PID but different equations
-        // Per algorithm: N = (AA << 8) | AB, T = ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1
+        // Both formulas use the same PID but different equations.
+        // For PID 2103, N is a single byte at data[2] after response header 61 03.
         val spec = when (formula) {
             Formula.Temp1 -> PidSpec(
                 name = "CVT temp 1",
@@ -35,14 +35,15 @@ class ReadCvtTemperature(
                 equation = "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
                 units = "°C",
                 headerHex = "7E1",
+                valueIndex = 2,
             )
             Formula.Temp2 -> PidSpec(
                 name = "CVT temp 2",
                 modeAndPid = "2103",
-                // Optimized Horner form per algorithm: ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1
                 equation = "((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1",
                 units = "°C",
                 headerHex = "7E1",
+                valueIndex = 2,
             )
         }
 

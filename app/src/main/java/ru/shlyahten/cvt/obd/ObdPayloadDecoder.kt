@@ -1,7 +1,5 @@
 package ru.shlyahten.cvt.obd
 
-import android.util.Log
-
 /**
  * Decodes ELM text responses into raw data bytes for a given service/mode+pid.
  *
@@ -13,8 +11,6 @@ import android.util.Log
  * - Continuation frames (PCI 0x21, 0x22, etc.): Remove first byte (PCI)
  */
 object ObdPayloadDecoder {
-    private const val TAG = "ObdPayloadDecoder"
-
     /**
      * Reassembles multi-frame ISO-TP responses from raw ELM lines.
      * Expected format: Lines starting with CAN ID (e.g., 7E9) followed by PCI and data.
@@ -34,6 +30,7 @@ object ObdPayloadDecoder {
         }
 
         val assembledPayload = mutableListOf<Byte>()
+        var expectedPayloadLength: Int? = null
         var i = 0
 
         while (i < allTokens.size) {
@@ -49,10 +46,12 @@ object ObdPayloadDecoder {
 
                 when (pci) {
                     0x10 -> {
+                        expectedPayloadLength = allTokens.getOrNull(i + 1)?.toIntOrNull(16)
                         // First frame: skip PCI (0x10) and length byte
                         i += 2
                         // Add remaining data bytes from this frame until next CAN ID or PCI
                         while (i < allTokens.size) {
+                            if (expectedPayloadLength != null && assembledPayload.size >= expectedPayloadLength) break
                             if (allTokens[i].length >= 3) break // Next CAN ID
                             val nextVal = allTokens[i].toIntOrNull(16) ?: break
                             if (nextVal in 0x21..0x2F) break // Next frame PCI
@@ -65,6 +64,7 @@ object ObdPayloadDecoder {
                         i++
                         // Add data bytes from this frame
                         while (i < allTokens.size) {
+                            if (expectedPayloadLength != null && assembledPayload.size >= expectedPayloadLength) break
                             if (allTokens[i].length >= 3) break // Next CAN ID
                             val nextVal = allTokens[i].toIntOrNull(16) ?: break
                             if (nextVal in 0x21..0x2F) break // Next frame PCI
@@ -106,8 +106,6 @@ object ObdPayloadDecoder {
             .split(Regex("\\s+"))
             .map { it.uppercase() }
 
-        Log.d(TAG, "extractDataBytes: modeAndPid=$modeAndPid, tokens=${tokens.joinToString(" ")}")
-
         // First, try to find the pattern "responseMode pidHex" directly in the tokens
         // This handles cases where multi-frame has already been assembled or is single-frame
         for (i in 0 until tokens.size - 1) {
@@ -126,12 +124,10 @@ object ObdPayloadDecoder {
                     j++
                 }
 
-                Log.d(TAG, "extractDataBytes: extracted ${bytes.size} bytes: ${bytes.joinToString(" ") { "%02X".format(it) }}")
                 return bytes.toByteArray()
             }
         }
 
-        Log.w(TAG, "extractDataBytes: pattern '$responseMode $pidHex' not found in response")
         return null
     }
 
