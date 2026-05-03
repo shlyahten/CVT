@@ -57,3 +57,5 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 ```
+local.properties
+/.qwen
