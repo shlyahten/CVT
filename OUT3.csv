@@ -1,0 +1,75 @@
+Name,ShortName,ModeAndPID,Equation,Min Value,Max Value,Units,Header
+CVT temp count,CVT temp count,2103,N,0,250,count,7.00E+01
+CVT temp 1,CVT temp 1,2103,(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6),-50,250,°C,7.00E+01
+CVT temp 2,CVT temp 2,2103,(0.0000286*N*N*N)+(-0.00951*N*N)+(1.46*N)+(-30.1),-50,250,grade C,7.00E+01
+CVT oil degradation,CVT oil deg,2110,AC*256+AD,0,220000,degr,7.00E+01
+CVT oil degradation test,CVT oil deg2,2110,AB*65536+AC*256+AD,0,220000,degr,7.00E+01
+CVT Primary Speed,CVT Pr.Speed,2103,A*32,0,8160,rpm,7.00E+01
+CVT Primary Speed,CVT Pr.Speed,2103,(A-2)*32,0,8160,rpm,7.00E+01
+CVT Secondary Speed,CVT Sec.Speed,2103,(B-2)*64,0,16320,rpm,7.00E+01
+CVT Secondary Speed,CVT Sec.Speed,2103,B*64,0,16320,rpm,7.00E+01
+CVT Real Speed Ratio,CVT Speed Ratio,2103,E/100,0.39,2.34,int,7.00E+01
+CVT LU solenoid monitor A,LU mon,2105,G*0.256+H*0.001,0,65.535,A,7E 1
+CVT LU solenoid output A,LU out,2105,A*0.256+B*0.001,0,65.535,A,7E 1
+CVT LU solenoid monitor mA,LU mon,2105,G*256+H,0,65535,mA,7.00E+01
+CVT LU solenoid output mA,LU out,2105,A*256+B,0,65535,mA,7.00E+01
+CVT LU/SEL changeover SOL.output,LU/SEL output,2105,{N:4},0,1,off/on,7.00E+01
+CVT LU/SEL changeover SOL.monitor,LU/SEL monitor,2105,{O:4},0,1,off/on,7.00E+01
+CVT Selector Petals,CVT Petals,2106,{B:3},0,1,off/on,7.00E+01
+CVT Selector Ds,CVT Ds,2106,{A:4},0,1,off/on,7.00E+01
+CVT Selector Ds,CVT Ds,2106,{B:3},0,1,off/on,7.00E+01
+CVT Gear Number,CVT Gear,2106,C+1,1,6,int,7.00E+01
+CVT Selector P,CVT P,2107,{A:4},0,1,off/on,7.00E+01
+CVT Selector R,CVT R,2107,{A:5},0,1,off/on,7.00E+01
+CVT Selector N,CVT N,2107,{A:6},0,1,off/on,7.00E+01
+CVT Selector D,CVT D,2107,{A:7},0,1,off/on,7.00E+01
+CVT Selector L,CVT L,2107,{A:2},0,1,off/on,7.00E+01
+CVT Breake,Breake,2107,{A:3},0,1,off/on,7.00E+01
+CVT Accelerator,CVT Acc.,2107,{A:0},0,1,off/on,7.00E+01
+CVT Accelerator,CVT Acc.,2107,{A:0},0,1,on/off,7.00E+01
+CVT ABS actuator signal,ABS signal,2107,{C:0},0,1,off/on,7.00E+01
+CVT TCL actuator signal,TCL signal,2107,{C:4},0,1,off/on,7.00E+01
+CVT ASC actuator signal,ASC signal,2107,{C:6},0,1,off/on,7.00E+01
+MPI Rele toplivnogo nasosa,Fuel pump,211E,{A:1},0,1,off/on,7.00E+00
+MPI Off cond,Condish,211D,{A:3},0,1,off/on,7.00E+00
+MPI Temp coolant,Coolant,2102,B-40,-40,130,grade C,7.00E+00
+ABS FL wheel speed sensor,FL speed,2101,A*2.56+B*0.01,0,655.35,km/h,784
+ABS FR wheel speed sensor,FR speed,2101,C*2.56+D*0.01,0,655.35,km/h,784
+ABS RL wheel speed sensor,RL speed,2101,E*2.56+F*0.01,0,655.35,km/h,784
+ABS RR wheel speed sensor,RR speed,2101,G*2.56+H*0.01,0,655.35,km/h,784
+AWC SAS(adjusted value),SAS(a.v.),2116,B*30.6/255-15.24,-15,15,grad,7B6
+AWC SAS,AWC SAS,2116,(B-128)/8,-15,15,grad,7B6
+AWC Center coupling current,Cent Coupling,2101,F*3.06/255,0,3,A,7B6
+AWC Center coupling current,AWC Center coupling current,2101,(F*3.0)/255,0,3,A,7B6
+AWC Ignition Off time,AWC Ignition Offtime,210D,J,0,255,min,7B6
+AWC Ignition Status,AWC Ignition status,210D,C,0,255,int,7B6
+AWC Mode,AWC Mode,2101,A,0,255,int,7B6
+AWC 4WD Mode ECO,4WD-ECO,2101,{A:1}-{A:0},0,1,off/on,7B6
+AWC 4WD Mode AUTO,4WD-AUTO,2101,{A:1}*{A:0},0,1,off/on,7B6
+AWC 4WD Mode LOCK,4WD-LOCK,2101,{A:2},0,1,off/on,7B6
+AWC Steering Angle,AWC Steering Angle,2104,((A*256+B)-4096)/2,-2048,2048,grad,7B6
+AWC Steering Speed,AWC Steering Speed,2104,((C*256+D)-4096)/2,-2048,2048,grad/s,7B6
+"AWC Steering Status,AWC Steering Status""",2104,E,0,255,int,7B6,
+AWC Accelerator Position,AWC Acc. Position,2105,(A*100)/256,0,100,%,7B6
+AWC Engine RPM,AWC Engine RPM,2105,(B*256)+C,0,7000,rpm,7B6
+AWC FL Rotation,AWC FL Rotation,2107,(A*256+B)/2,0,4000,rpm,7B6
+AWC FR Rotation,AWC FR Rotation,2107,(C*256+D)/2,0,4000,rpm,7B6
+AWC RL Rotation,AWC RL Rotation,2107,(E*256+F)/2,0,4000,rpm,7B6
+AWC RR Rotation,AWC RR Rotation,2107,(G*256+H)/2,0,4000,rpm,7B6
+AWC FL Speed,AWC FL Speed,2107,(I*256+J)/100,0,250,km/h,7B6
+AWC FR Speed,AWC FR Speed,2107,(K*256+L)/100,0,250,km/h,7B6
+AWC RL Speed,AWC RL Speed,2107,(M*256+N)/100,0,250,km/h,7B6
+AWC RR Speed,AWC RR Speed,2107,(O*256+P)/100,0,250,km/h,7B6
+AWC Yaw Rate,AWC Yaw Rate,210A,((A*256+B)-32768)/100,-90,90,grad/s,7B6
+AWC Lateral G,AWC Lateral G,210A,(C-128)/10,-12,12,m/s^2,7B6
+AWC Longitudinal G,AWC Longitudinal G,210A,(D-128)/10,-12,12,m/s^2,7B6
+AWC Brake Status,AWC Brake,210D,{A:0},0,1,off/on,7B6
+AWC Parking Brake,AWC Parking Brake,210D,{B:0},0,1,off/on,7B6
+AWC ACC Voltage,AWC ACC Voltage,210D,D/10,0,17,V,7B6
+AWC IOD Fuse,AWC IOD Fuse,210D,{E:0},0,1,on/off,7B6
+AWC Odometr,AWC Odometr,210D,((F*65536)+(G*256)+H)/10,0,1677721,km,7B6
+AWC Air Temperature,AWC Air Temp.,210D,(I/2)-40,-30,85,grad,7B6
+AWC IG1,AWC IG1,2113,{A:0},0,1,off/on,7B6
+AWC ECU Voltage,AWC ECU Voltage,2113,(B*256+C)/64,0,17,V,7B6
+AWC Ext Voltage,AWC Ext Voltage,2113,(D*256+E)/64,0,17,V,7B6
+AWC Milage,AWC Milage,2130,((C*65536)+(D*256)+E)/10,0,1677721,km,7B6
