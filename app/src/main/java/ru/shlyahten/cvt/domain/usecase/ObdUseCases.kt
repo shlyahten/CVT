@@ -3,6 +3,7 @@ package ru.shlyahten.cvt.domain.usecase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import ru.shlyahten.cvt.config.VehicleConfigs
 import ru.shlyahten.cvt.data.repository.ObdRepository
 import ru.shlyahten.cvt.obd.*
 import android.util.Log
