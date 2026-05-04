@@ -49,4 +49,3 @@ The project uses the Gradle build system.
 ### Coding Standards
 - Use **Version Catalogs** (`libs.versions.toml`) for managing all dependencies and plugins.
 - Adhere to **Jetpack Compose** best practices for UI development.
-    

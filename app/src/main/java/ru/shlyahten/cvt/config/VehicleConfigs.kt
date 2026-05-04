@@ -26,7 +26,7 @@ data class VehicleConfig(
  * All vehicle-specific PID definitions and formulas are stored here.
  */
 object VehicleConfigs {
-    
+
     val MitsubishiLancerXCvt = VehicleConfig(
         name = "Mitsubishi Lancer X CVT",
         tempPid = PidConfig(
@@ -34,7 +34,7 @@ object VehicleConfigs {
             headerHex = "7E1",
             formulas = mapOf(
                 "Temp1" to "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
-                "Temp2" to "((0.0000286*N - 0.00951)*N + 1.46)*N - 30.1"
+                "Temp2" to "0.0000286*N*N*N - 0.00951*N*N + 1.46*N - 30.1"
             ),
             valueIndex = 2
         ),
@@ -42,11 +42,12 @@ object VehicleConfigs {
             modeAndPid = "2110",
             headerHex = "7E1",
             formulas = mapOf(
-                "Default" to "AC*256+AD"
+                "Default" to "AC*256+AD",
+                "Test" to "AB*65536+AC*256+AD"
             )
         )
     )
-    
+
     /**
      * Get configuration by vehicle name.
      */
@@ -54,7 +55,7 @@ object VehicleConfigs {
         "mitsubishi lancer x cvt", "lancer x", "mitsubishi" -> MitsubishiLancerXCvt
         else -> null
     }
-    
+
     /**
      * List of all available vehicle configurations.
      */

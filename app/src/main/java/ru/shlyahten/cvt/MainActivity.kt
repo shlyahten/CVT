@@ -28,7 +28,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -78,6 +77,16 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+        // Initialize ViewModel after setting content
+        vm.initialize(this)
+        val granted = if (Build.VERSION.SDK_INT < 31) {
+            true
+        } else {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+        }
+        vm.setHasConnectPermission(granted)
+        vm.refreshBondedDevices()
     }
 }
 
@@ -92,19 +101,6 @@ fun MainScreen(
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val state by vm.state.collectAsState()
-
-    // Single init point
-    LaunchedEffect(Unit) {
-        vm.initialize(ctx)
-        val granted = if (Build.VERSION.SDK_INT < 31) {
-            true
-        } else {
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
-        }
-        vm.setHasConnectPermission(granted)
-        vm.refreshBondedDevices()
-    }
 
     Scaffold(
         modifier = modifier,
