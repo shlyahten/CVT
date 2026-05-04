@@ -22,42 +22,37 @@ import java.io.Closeable
  * Defines the contract for OBD data access, abstracting away Bluetooth and ELM327 details.
  */
 interface ObdRepository : Closeable {
-    
+
     /**
      * Get list of paired Bluetooth devices.
      */
     fun getBondedDevices(): List<BluetoothDevice>
-    
+
     /**
      * Connect to an OBD device via Bluetooth.
      */
     suspend fun connect(deviceAddress: String): Result<Unit>
-    
+
     /**
      * Disconnect from the current OBD session.
      */
     fun disconnect()
-    
+
     /**
      * Check if currently connected.
      */
     fun isConnected(): Boolean
-    
+
     /**
      * Get the current Elm327Session for direct communication.
      * Returns null if not connected.
      */
     fun getSession(): Elm327Session?
-    
+
     /**
      * Query a single PID and return the calculated value.
      */
     suspend fun queryPid(spec: PidSpec): Result<Double>
-    
-    /**
-     * Read oil degradation value (specific use case).
-     */
-    suspend fun readOilDegradation(): Result<Long>
 }
 
 /**
@@ -129,16 +124,6 @@ class ObdRepositoryImpl(
         }
     }
     
-    override suspend fun readOilDegradation(): Result<Long> = withContext(Dispatchers.IO) {
-        val spec = PidSpec(
-            name = "CVT oil degradation",
-            modeAndPid = "2110",
-            equation = "AC*256+AD",
-            units = "degr",
-            headerHex = "7E1",
-        )
-        queryPid(spec).map { it.toLong() }
-    }
     
     override fun close() {
         disconnect()

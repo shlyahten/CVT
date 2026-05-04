@@ -42,7 +42,8 @@ object VehicleConfigs {
             modeAndPid = "2110",
             headerHex = "7E1",
             formulas = mapOf(
-                "Default" to "AC*256+AD"
+                "Default" to "AC*256+AD",
+                "Test" to "AB*65536+AC*256+AD"
             )
         )
     )

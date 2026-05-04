@@ -79,16 +79,52 @@ class ReadCvtTemperature(
 
 /**
  * Use case for reading oil degradation from the vehicle.
+ * Supports both standard and test degradation calculation methods.
  */
 class ReadOilDegradation(
     private val obdRepository: ObdRepository,
 ) {
+
+    enum class Formula {
+        Default,
+        Test
+    }
+
     /**
-     * Execute oil degradation reading.
+     * Execute oil degradation reading with the specified formula.
+     * @param formula The formula to use for degradation calculation.
      * @return Result containing the degradation value, or an error.
      */
-    suspend fun execute(): Result<Long> {
-        return obdRepository.readOilDegradation()
+    suspend fun execute(formula: Formula = Formula.Default): Result<Long> = withContext(Dispatchers.IO) {
+        // Get the vehicle config for oil degradation formulas
+        val config = VehicleConfigs.getByName("Mitsubishi Lancer X CVT")
+            ?: error("Vehicle config not found")
+        
+        val oilConfig = config.oilDegradationPid
+            ?: error("Oil degradation config not found")
+        
+        // Create PidSpec based on selected formula
+        val spec = when (formula) {
+            Formula.Default -> PidSpec(
+                name = "CVT oil degradation",
+                modeAndPid = oilConfig.modeAndPid,
+                equation = oilConfig.formulas["Default"] ?: error("Default formula not found"),
+                units = "degr",
+                headerHex = oilConfig.headerHex,
+                valueIndex = 0, // For oil degradation, we use A and B bytes (indices 0,1)
+            )
+            Formula.Test -> PidSpec(
+                name = "CVT oil degradation test",
+                modeAndPid = oilConfig.modeAndPid,
+                equation = oilConfig.formulas["Test"] ?: error("Test formula not found"),
+                units = "degr",
+                headerHex = oilConfig.headerHex,
+                valueIndex = 0, // For oil degradation test, we use A, B, and C bytes (indices 0,1,2)
+            )
+        }
+
+        // Query the PID and convert result to Long
+        obdRepository.queryPid(spec).map { it.toLong() }
     }
 }
 
