@@ -202,7 +202,11 @@ class MainViewModel : ViewModel() {
                         CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> String.format("%.1f", temp)
                         CvtTempFormula.RawCount -> temp.toInt().toString()
                     }
-                    addLogEntry("CVT temp: $displayValue ${when (formula) { CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> \"°C\"; CvtTempFormula.RawCount -> \"count\" }}")
+                    val unit = when (formula) {
+                        CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> "°C"
+                        CvtTempFormula.RawCount -> "count"
+                    }
+                    addLogEntry("CVT temp: $displayValue $unit")
                     _state.update { it.copy(cvtTempC = temp, status = "OK") }
                 } catch (t: Throwable) {
                     errorCount++
