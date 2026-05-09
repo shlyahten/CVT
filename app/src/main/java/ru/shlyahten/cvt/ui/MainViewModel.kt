@@ -36,7 +36,7 @@ data class UiState(
     val oilDegradation: Long? = null,
 )
 
-enum class CvtTempFormula { Temp1, Temp2 }
+enum class CvtTempFormula { Temp1, Temp2, RawCount }
 
 class MainViewModel : ViewModel() {
     companion object {
@@ -185,15 +185,24 @@ class MainViewModel : ViewModel() {
                 if (!manageConnection.isConnected()) break
                 try {
                     val formula = state.value.cvtTempFormula
-                    val tempName = if (formula == CvtTempFormula.Temp1) "Temp1" else "Temp2"
+                    val tempName = when (formula) {
+                        CvtTempFormula.Temp1 -> "Temp1"
+                        CvtTempFormula.Temp2 -> "Temp2"
+                        CvtTempFormula.RawCount -> "RawCount"
+                    }
                     addLogEntry("Polling CVT temp ($tempName)...")
                     val tempResult = when (formula) {
                         CvtTempFormula.Temp1 -> readCvtTemperature.execute(ReadCvtTemperature.Formula.Temp1)
                         CvtTempFormula.Temp2 -> readCvtTemperature.execute(ReadCvtTemperature.Formula.Temp2)
+                        CvtTempFormula.RawCount -> readCvtTemperature.execute(ReadCvtTemperature.Formula.RawCount)
                     }
                     val temp = tempResult.getOrElse { throw it }
                     errorCount = 0
-                    addLogEntry("CVT temp: ${String.format("%.1f", temp)} °C")
+                    val displayValue = when (formula) {
+                        CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> String.format("%.1f", temp)
+                        CvtTempFormula.RawCount -> temp.toInt().toString()
+                    }
+                    addLogEntry("CVT temp: $displayValue ${when (formula) { CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> \"°C\"; CvtTempFormula.RawCount -> \"count\" }}")
                     _state.update { it.copy(cvtTempC = temp, status = "OK") }
                 } catch (t: Throwable) {
                     errorCount++

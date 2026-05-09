@@ -192,14 +192,21 @@ fun MainScreen(
                             onClick = { vm.setFormula(CvtTempFormula.Temp2) },
                             label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_2)) },
                         )
+                        FilterChip(
+                            selected = state.cvtTempFormula == CvtTempFormula.RawCount,
+                            onClick = { vm.setFormula(CvtTempFormula.RawCount) },
+                            label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_3)) },
+                        )
                     }
 
                     val t = state.cvtTempC
+                    val displayText = when {
+                        t == null -> stringResource(R.string.screen_main_cvt_temp_no_data)
+                        state.cvtTempFormula == CvtTempFormula.RawCount -> stringResource(R.string.screen_main_cvt_temp_raw_value, t.toInt())
+                        else -> stringResource(R.string.screen_main_cvt_temp_value, t)
+                    }
                     Text(
-                        text = if (t == null)
-                            stringResource(R.string.screen_main_cvt_temp_no_data)
-                        else
-                            stringResource(R.string.screen_main_cvt_temp_value, t),
+                        text = displayText,
                         style = MaterialTheme.typography.displaySmall,
                     )
                 }

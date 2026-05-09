@@ -18,7 +18,8 @@ class ReadCvtTemperature(
 
     enum class Formula {
         Temp1,
-        Temp2
+        Temp2,
+        RawCount
     }
 
     /**
@@ -71,6 +72,14 @@ class ReadCvtTemperature(
                 modeAndPid = "2103",
                 equation = "0.0000286*N*N*N - 0.00951*N*N + 1.46*N - 30.1",
                 units = "°C",
+                headerHex = "7E1",
+                valueIndex = 2,
+            )
+            Formula.RawCount -> PidSpec(
+                name = "CVT temp count",
+                modeAndPid = "2103",
+                equation = "N",
+                units = "count",
                 headerHex = "7E1",
                 valueIndex = 2,
             )
