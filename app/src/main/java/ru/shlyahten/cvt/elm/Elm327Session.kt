@@ -23,23 +23,26 @@ class Elm327Session(
         Log.d(TAG, "=== Starting ELM327 initialization ===")
         Log.d(TAG, "Header: $headerHex")
 
-        // Reset + basic setup per algorithm requirements
+        // Reset + basic setup per algorithm requirements for CVT ECU communication
         Log.d(TAG, "Sending ATZ (reset)...")
         sendExpectOk("ATZ", timeoutMs = 3000)
+
+        Log.d(TAG, "Sending ATE0 (echo off)...")
+        sendExpectOk("ATE0")
+
+        Log.d(TAG, "Sending ATL0 (linefeeds off)...")
+        sendExpectOk("ATL0")
+
+        Log.d(TAG, "Sending ATS0 (spaces off)...")
+        sendExpectOk("ATS0")
+
+        Log.d(TAG, "Sending ATH1 (headers on)...")
+        sendExpectOk("ATH1")
 
         Log.d(TAG, "Sending ATSP6 (ISO 15765-4 CAN)...")
         sendExpectOk("ATSP6") // ISO 15765-4 CAN (11bit 500k)
 
-        Log.d(TAG, "Sending ATH1 (headers on)...")
-        sendExpectOk("ATH1") // включить заголовки
-
-        Log.d(TAG, "Sending ATL1 (linefeeds on)...")
-        sendExpectOk("ATL1") // включить переносы строк
-
-        Log.d(TAG, "Sending ATPC (clear buffer)...")
-        sendExpectOk("ATPC") // очистить буфер
-
-        Log.d(TAG, "Sending ATSH$headerHex...")
+        Log.d(TAG, "Sending ATSH$headerHex (set header to $headerHex)...")
         sendExpectOk("ATSH$headerHex")
 
         Log.d(TAG, "=== ELM327 initialization complete ===")
