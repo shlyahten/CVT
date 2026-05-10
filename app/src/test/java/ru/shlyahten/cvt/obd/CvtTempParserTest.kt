@@ -1,6 +1,7 @@
 package ru.shlyahten.cvt.obd
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
