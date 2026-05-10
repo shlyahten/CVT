@@ -16,11 +16,11 @@ class CvtTempParserTest {
      */
     @Test
     fun `test parseCvtTempCount from example response`() {
-        // Example from the issue description
+        // Example from the issue description - fixed: 0x21 should be immediately after 61 03
         val rawLines = listOf(
-                "7E9 10 12 61 03 02 02 00 B4",
+                "7E9 10 12 61 03 21 02 00 B4",  // 21 сразу после 61 03
                 "7E9 21 EA 00 00 FA FA F3 40",
-                "7E9 22 00 00 21 00 00 05 AB"
+                "7E9 22 00 00 00 00 00 05 AB"
         )
 
         val result = CvtTempParser.parseCvtTempCount(rawLines)

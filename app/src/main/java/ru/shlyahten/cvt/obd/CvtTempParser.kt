@@ -28,8 +28,30 @@ object CvtTempParser {
         // Validate input
         if (rawLines.isEmpty()) return null
 
-        // Step 1: Reassemble ISO-TP multi-frame payload
-        val payload = ObdPayloadDecoder.parseIsoTpMultiFrame(rawLines)
+        // Check if this is a single frame response
+        val firstLine = rawLines[0]
+        val bytes = firstLine.trim().split("\\s+".toRegex())
+        
+        // Need at least 3 bytes: header (7E9), PCI, and data
+        if (bytes.size < 3) return null
+        
+        // Parse PCI byte (second byte after header)
+        val pciStr = bytes.getOrNull(1) ?: return null
+        val pci = pciStr.toIntOrNull(16) ?: return null
+        
+        // Check if it's a single frame (PCI upper nibble = 0)
+        val isSingleFrame = (pci and 0xF0) == 0x00
+        
+        val payload: ByteArray? = if (isSingleFrame) {
+            // Single frame: data starts after PCI byte
+            // Remove header (7E9) and PCI byte, then convert hex strings to bytes
+            val dataBytes = bytes.drop(2).mapNotNull { it.toIntOrNull(16)?.toByte() }
+            dataBytes.toByteArray()
+        } else {
+            // Multi-frame: use existing decoder
+            ObdPayloadDecoder.parseIsoTpMultiFrame(rawLines)
+        }
+        
         if (payload == null) return null
 
         // Step 2: Find the response header "61 03" in the payload
@@ -54,12 +76,12 @@ object CvtTempParser {
      */
     fun convertCountToTemp1(count: Int): Double {
         val n = count.toDouble()
-        return (0.000000002344 * Math.pow(n, 5.0))
-                + (-0.000001387 * Math.pow(n, 4.0))
-                + (0.0003193 * Math.pow(n, 3.0))
-                + (-0.03501 * Math.pow(n, 2.0))
-                + (2.302 * n)
-                + (-36.6)
+        return (0.000000002344 * Math.pow(n, 5.0)) +
+                (-0.000001387 * Math.pow(n, 4.0)) +
+                (0.0003193 * Math.pow(n, 3.0)) +
+                (-0.03501 * Math.pow(n, 2.0)) +
+                (2.302 * n) +
+                (-36.6)
     }
 
     /**
@@ -72,10 +94,10 @@ object CvtTempParser {
      */
     fun convertCountToTemp2(count: Int): Double {
         val n = count.toDouble()
-        return (0.0000286 * n * n * n)
-                + (-0.00951 * n * n)
-                + (1.46 * n)
-                + (-30.1)
+        return (0.0000286 * n * n * n) +
+                (-0.00951 * n * n) +
+                (1.46 * n) +
+                (-30.1)
     }
 
     /**
