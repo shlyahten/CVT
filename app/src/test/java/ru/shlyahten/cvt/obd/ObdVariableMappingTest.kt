@@ -45,32 +45,31 @@ class ObdVariableMappingTest {
 
     @Test
     fun `test N calculation uses configured single byte index`() {
+        // 16 bytes after 61 03 — same layout as info.md 2103 after ISO-TP merge; N=0x21 at index 13
         val data = byteArrayOf(
-            0x02.toByte(), // AA
-            0x02.toByte(), // AB
-            0x15.toByte(), // AC = N for PID 2103
-            0x7F.toByte()
+            0x02, 0x02, 0x00, 0xB4.toByte(),
+            0xEA.toByte(), 0x00, 0x00, 0xFA.toByte(),
+            0xFA.toByte(), 0xF3.toByte(), 0x40.toByte(), 0x00,
+            0x00, 0x21, 0x00, 0x00,
         )
 
-        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = 2)
-        
+        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX)
+
         assertEquals(2.0, vars["AA"]!!, 0.001)
         assertEquals(2.0, vars["AB"]!!, 0.001)
-        assertEquals(21.0, vars["AC"]!!, 0.001)
-        
-        assertEquals(21.0, vars["N"]!!, 0.001)
+        assertEquals(33.0, vars["N"]!!, 0.001)
     }
 
     @Test
-    fun `test temperature calculation with N from third data byte`() {
+    fun `test temperature calculation with N from configured index`() {
         val data = byteArrayOf(
-            0x02.toByte(),
-            0x02.toByte(),
-            0x15.toByte(),
-            0x7F.toByte()
+            0x02, 0x02, 0x00, 0xB4.toByte(),
+            0xEA.toByte(), 0x00, 0x00, 0xFA.toByte(),
+            0xFA.toByte(), 0xF3.toByte(), 0x40.toByte(), 0x00,
+            0x00, 0x21, 0x00, 0x00,
         )
 
-        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = 2)
+        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX)
         val n = vars["N"]!!
         
         // T = ((0.0000286 * N - 0.00951) * N + 1.46) * N - 30.1

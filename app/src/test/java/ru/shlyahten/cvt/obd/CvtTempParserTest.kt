@@ -11,32 +11,31 @@ import org.junit.Test
 class CvtTempParserTest {
 
     /**
-     * Test parsing CVT temp count from the provided example response.
-     * Expected: hex 21 -> decimal 33
+     * Test parsing CVT temp count from info.md Bluetooth log (PID 2103, same bytes as Carscanner N=33).
      */
     @Test
     fun `test parseCvtTempCount from example response`() {
-        // Example from the issue description - fixed: 0x21 should be immediately after 61 03
         val rawLines = listOf(
-                "7E9 10 12 61 03 21 02 00 B4",  // 21 сразу после 61 03
-                "7E9 21 EA 00 00 FA FA F3 40",
-                "7E9 22 00 00 00 00 00 05 AB"
+            "7E9 10 12 61 03 02 02 00 B4",
+            "7E9 21 EA 00 00 FA FA F3 40",
+            "7E9 22 00 00 21 00 00 05 AB",
         )
 
         val result = CvtTempParser.parseCvtTempCount(rawLines)
-        assertEquals("Should parse hex 21 as decimal 33", 33, result)
+        assertEquals("N at data index 12 is 0x21 = 33", 33, result)
     }
 
     /**
-     * Test parsing CVT temp count from single-frame response.
+     * Single-line normalized response (ISO-TP already merged) — N at index 12.
      */
     @Test
-    fun `test parseCvtTempCount single frame`() {
-        // Single frame response (simplified)
-        val rawLines = listOf("7E9 06 61 03 21 00 00")
+    fun `test parseCvtTempCount single line merged payload`() {
+        val rawLines = listOf(
+            "61 03 02 02 00 B4 EA 00 00 FA FA F3 40 00 00 21 00 00",
+        )
 
         val result = CvtTempParser.parseCvtTempCount(rawLines)
-        assertEquals("Should parse hex 21 as decimal 33 from single frame", 33, result)
+        assertEquals(33, result)
     }
 
     /**
