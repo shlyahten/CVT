@@ -2,7 +2,7 @@
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.x-purple?logo=kotlin)](https://kotlinlang.org/)
 [![Android](https://img.shields.io/badge/Android-8.0+-green?logo=android)](https://www.android.com/)
-[![Build Status](https://github.com/shlyahten/CVT/actions/workflows/android.yml/badge.svg)](https://github.com/shlyahten/CVT/actions)
+[![Android CI](https://github.com/shlyahten/CVT/actions/workflows/android.yml/badge.svg)](https://github.com/shlyahten/CVT/actions/workflows/android.yml)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-latest-blue)](https://developer.android.com/jetpack/compose)
 
 Android-приложение на **Kotlin + Jetpack Compose** для чтения температуры вариатора (CVT) автомобилей **Mitsubishi Lancer X** через адаптер **ELM327** по Bluetooth Classic (SPP).
