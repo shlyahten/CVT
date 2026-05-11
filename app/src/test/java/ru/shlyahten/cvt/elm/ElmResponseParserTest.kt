@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ru.shlyahten.cvt.obd.ObdPayloadDecoder
 
 /**
  * Unit tests for ElmResponseParser.
@@ -97,5 +98,27 @@ class ElmResponseParserTest {
         val result = ElmResponseParser.parse(raw)
         
         assertTrue(result.isError)
+    }
+
+    @Test
+    fun `expandCompactElmCanLine splits ATS0 style CAN line from info md`() {
+        assertEquals(
+            "7E9 10 12 61 03 02 02 00 B4",
+            ElmResponseParser.expandCompactElmCanLine("7E910126103020200B4"),
+        )
+    }
+
+    @Test
+    fun `parse expands compact 2103 multiline and extractDataBytes yields N at index 13`() {
+        val raw = "7E910126103020200B4\r7E921EA0000FAFAF340\r7E922000021000005AB"
+        val parsed = ElmResponseParser.parse(raw)
+        val mf = ObdPayloadDecoder.parseIsoTpMultiFrame(listOf(parsed.normalized))
+        assertNotNull(mf)
+        val data = ObdPayloadDecoder.extractDataBytes(
+            "2103",
+            mf!!.joinToString(" ") { b -> "%02X".format(b) },
+        )
+        assertNotNull(data)
+        assertEquals(0x21, data!![13].toInt() and 0xFF)
     }
 }

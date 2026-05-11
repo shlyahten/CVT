@@ -1,5 +1,7 @@
 package ru.shlyahten.cvt.config
 
+import ru.shlyahten.cvt.obd.CVT_2103_TEMP_COUNT_BYTE_INDEX
+
 /**
  * Configuration for a single PID (Parameter ID).
  * Contains all necessary information to query and decode a specific OBD parameter.
@@ -36,7 +38,7 @@ object VehicleConfigs {
                 "Temp1" to "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
                 "Temp2" to "0.0000286*N*N*N - 0.00951*N*N + 1.46*N - 30.1"
             ),
-            valueIndex = 2
+            valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX
         ),
         oilDegradationPid = PidConfig(
             modeAndPid = "2110",

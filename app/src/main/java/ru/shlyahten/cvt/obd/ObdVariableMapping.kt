@@ -7,7 +7,7 @@ object ObdVariableMapping {
      * - AA, AB, AC, AD ... represent bytes 1..n after the response header (61 xx)
      * - A, B, C, D ... are aliases to AA, AB, AC, AD ...
      * - N is a special single-byte variable used in formulas, selected by valueIndex.
-     *   For Mitsubishi Lancer X CVT temperature PID 2103, valueIndex is 2.
+     *   For Mitsubishi Lancer X CVT temperature PID 2103, use [CVT_2103_TEMP_COUNT_BYTE_INDEX].
      */
     fun fromDataBytes(data: ByteArray, valueIndex: Int = 0): Map<String, Double> {
         val baseMap = HashMap<String, Double>(64)

@@ -9,6 +9,8 @@ package ru.shlyahten.cvt.obd
  * Handles multi-frame ISO-TP responses according to the algorithm:
  * - First frame (PCI 0x10): Remove first 2 bytes (PCI + length)
  * - Continuation frames (PCI 0x21, 0x22, etc.): Remove first byte (PCI)
+ * - Frame boundaries are taken from the next CAN header token (length 3+) and from the FF total length;
+ *   data bytes may equal 0x21..0x2F and must not be treated as PCI.
  */
 object ObdPayloadDecoder {
     /**
@@ -54,7 +56,6 @@ object ObdPayloadDecoder {
                             if (expectedPayloadLength != null && assembledPayload.size >= expectedPayloadLength) break
                             if (allTokens[i].length >= 3) break // Next CAN ID
                             val nextVal = allTokens[i].toIntOrNull(16) ?: break
-                            if (nextVal in 0x21..0x2F) break // Next frame PCI
                             assembledPayload.add(nextVal.toByte())
                             i++
                         }
@@ -67,7 +68,6 @@ object ObdPayloadDecoder {
                             if (expectedPayloadLength != null && assembledPayload.size >= expectedPayloadLength) break
                             if (allTokens[i].length >= 3) break // Next CAN ID
                             val nextVal = allTokens[i].toIntOrNull(16) ?: break
-                            if (nextVal in 0x21..0x2F) break // Next frame PCI
                             assembledPayload.add(nextVal.toByte())
                             i++
                         }

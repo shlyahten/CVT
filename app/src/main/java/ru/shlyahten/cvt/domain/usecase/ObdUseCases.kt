@@ -29,7 +29,7 @@ class ReadCvtTemperature(
      */
     suspend fun execute(formula: Formula): Result<Double> = withContext(Dispatchers.IO) {
         // Both formulas use the same PID but different equations.
-        // For PID 2103, N is a single byte at data[2] after response header 61 03.
+        // For PID 2103, N is a single byte at data[CVT_2103_TEMP_COUNT_BYTE_INDEX] after response header 61 03.
         val spec = createPidSpec(formula)
 
         // Attempt reading with one retry on NO DATA
@@ -65,7 +65,7 @@ class ReadCvtTemperature(
                 equation = "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
                 units = "°C",
                 headerHex = "7E1",
-                valueIndex = 2,
+                valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX,
             )
             Formula.Temp2 -> PidSpec(
                 name = "CVT temp 2",
@@ -73,7 +73,7 @@ class ReadCvtTemperature(
                 equation = "0.0000286*N*N*N - 0.00951*N*N + 1.46*N - 30.1",
                 units = "°C",
                 headerHex = "7E1",
-                valueIndex = 2,
+                valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX,
             )
             Formula.RawCount -> PidSpec(
                 name = "CVT temp count",
@@ -81,7 +81,7 @@ class ReadCvtTemperature(
                 equation = "N",
                 units = "count",
                 headerHex = "7E1",
-                valueIndex = 2,
+                valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX,
             )
         }
     }

@@ -116,7 +116,17 @@ class ObdRepositoryImpl(
                 return@runCatching throw ObdException(response.response.normalized.ifBlank { "ELM error" }, ObdErrorType.ProtocolError)
             }
             
-            val data = ObdPayloadDecoder.extractDataBytes(spec.modeAndPid, response.response.normalized)
+            val normalized = response.response.normalized
+            val mfPayload = ObdPayloadDecoder.parseIsoTpMultiFrame(listOf(normalized))
+            val data = mfPayload
+                ?.takeIf { it.size >= 2 && it[0] == 0x61.toByte() && it[1] == 0x03.toByte() }
+                ?.let { payload ->
+                    ObdPayloadDecoder.extractDataBytes(
+                        spec.modeAndPid,
+                        payload.joinToString(" ") { b -> "%02X".format(b) },
+                    )
+                }
+                ?: ObdPayloadDecoder.extractDataBytes(spec.modeAndPid, normalized)
                 ?: return@runCatching throw ObdException("No payload for ${spec.modeAndPid}", ObdErrorType.PayloadNotFound)
             
             val variables = ObdVariableMapping.fromDataBytes(data, spec.valueIndex)

@@ -138,26 +138,25 @@ class ObdPayloadDecoderTest {
     @Test
     fun `extractDataBytes extracts correct bytes for CVT temp calculation`() {
         val modeAndPid = "2103"
-        val normalized = "61 03 02 02 15 7F EA 00 00 01 01 FD 78 2F 25 71 00 00"
-        
+        val normalized =
+            "61 03 02 02 00 B4 EA 00 00 FA FA F3 40 00 00 21 00 00"
+
         val data = ObdPayloadDecoder.extractDataBytes(modeAndPid, normalized)
-        
+
         assertNotNull(data)
         assertEquals(16, data!!.size)
         assertEquals(0x02.toByte(), data[0])
         assertEquals(0x02.toByte(), data[1])
-        assertEquals(0x15.toByte(), data[2])
-        
-        val n = data[2].toInt() and 0xFF
-        assertEquals(21, n)
+        assertEquals(0x00.toByte(), data[2])
+        assertEquals(0x21.toByte(), data[13])
     }
 
     @Test
     fun `parseIsoTpMultiFrame reassembles 2103 payload and preserves data index`() {
         val rawLines = listOf(
-            "7E9 10 12 61 03 02 02 15 7F",
-            "7E9 21 EA 00 00 01 01 FD 78",
-            "7E9 22 2F 25 71 00 00 00 00"
+            "7E9 10 12 61 03 02 02 00 B4",
+            "7E9 21 EA 00 00 FA FA F3 40",
+            "7E9 22 00 00 21 00 00 05 AB",
         )
 
         val payload = ObdPayloadDecoder.parseIsoTpMultiFrame(rawLines)
@@ -171,6 +170,6 @@ class ObdPayloadDecoderTest {
 
         assertNotNull(data)
         assertEquals(16, data!!.size)
-        assertEquals(0x15.toByte(), data[2])
+        assertEquals(0x21.toByte(), data[13])
     }
 }
