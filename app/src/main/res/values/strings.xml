@@ -27,6 +27,18 @@
     <string name="screen_main_cvt_temp_raw_value" formatted="false">%d count</string>
     <string name="screen_main_cvt_temp_no_data">—</string>
 
+    <!-- Main Screen - Floating overlay -->
+    <string name="screen_main_floating_widget_title">Плавающий виджет</string>
+    <string name="screen_main_floating_widget_label">Показывать CVT Temp1 поверх других приложений</string>
+
+    <!-- Overlay widget -->
+    <string name="overlay_cvt_temp1_placeholder">CVT Temp1: —</string>
+    <string name="overlay_cvt_temp1_no_data">CVT Temp1: —</string>
+    <string name="overlay_cvt_temp1_value">CVT Temp1: %1$.1f °C</string>
+    <string name="overlay_notification_channel_name">CVT overlay</string>
+    <string name="overlay_notification_title">CVT Temp1</string>
+    <string name="overlay_notification_text">Плавающий виджет активен</string>
+
     <!-- Main Screen - Oil Degradation -->
     <string name="screen_main_oil_title">CVT oil degradation (2110)</string>
     <string name="screen_main_oil_button_read">Read once</string>

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.shlyahten.cvt.CvtApp
 import ru.shlyahten.cvt.R
 import ru.shlyahten.cvt.data.repository.ObdRepository
 import ru.shlyahten.cvt.data.repository.ObdRepositoryImpl
@@ -34,6 +35,7 @@ data class UiState(
     val cvtTempC: Double? = null,
     val cvtTempFormula: CvtTempFormula = CvtTempFormula.Temp1,
     val oilDegradation: Long? = null,
+    val floatingOverlayDesired: Boolean = false,
 )
 
 enum class CvtTempFormula { Temp1, Temp2, RawCount }
@@ -52,7 +54,9 @@ class MainViewModel : ViewModel() {
     private lateinit var manageConnection: ManageObdConnection
     private lateinit var readCvtTemperature: ReadCvtTemperature
     private lateinit var readOilDegradation: ReadOilDegradation
-    
+
+    private var cvtApp: CvtApp? = null
+
     private var pollJob: Job? = null
     
     private fun addLogEntry(entry: String) {
@@ -83,6 +87,7 @@ class MainViewModel : ViewModel() {
         manageConnection = ManageObdConnection(obdRepository)
         readCvtTemperature = ReadCvtTemperature(obdRepository)
         readOilDegradation = ReadOilDegradation(obdRepository)
+        cvtApp = context.applicationContext as CvtApp
         addLogEntry(context.getString(R.string.log_app_initialized))
     }
     
@@ -113,6 +118,10 @@ class MainViewModel : ViewModel() {
 
     fun setFormula(formula: CvtTempFormula) {
         _state.update { it.copy(cvtTempFormula = formula) }
+    }
+
+    fun setFloatingOverlayDesired(enabled: Boolean) {
+        _state.update { it.copy(floatingOverlayDesired = enabled) }
     }
 
     fun connect(context: Context) {
@@ -154,6 +163,7 @@ class MainViewModel : ViewModel() {
         pollJob?.cancel()
         pollJob = null
         manageConnection.disconnect()
+        cvtApp?.updateOverlayCvtTemp1(null)
         _state.update { it.copy(isConnecting = false, isConnected = false) }
     }
 
@@ -190,17 +200,24 @@ class MainViewModel : ViewModel() {
                         CvtTempFormula.Temp2 -> "Temp2"
                         CvtTempFormula.RawCount -> "RawCount"
                     }
-                    addLogEntry("Polling CVT temp ($tempName)...")
-                    val tempResult = when (formula) {
-                        CvtTempFormula.Temp1 -> readCvtTemperature.execute(ReadCvtTemperature.Formula.Temp1)
-                        CvtTempFormula.Temp2 -> readCvtTemperature.execute(ReadCvtTemperature.Formula.Temp2)
-                        CvtTempFormula.RawCount -> readCvtTemperature.execute(ReadCvtTemperature.Formula.RawCount)
+                    addLogEntry("Polling CVT temp (2103 N → $tempName)...")
+                    val rawResult = readCvtTemperature.execute(ReadCvtTemperature.Formula.RawCount)
+                    val n = rawResult.getOrElse { throw it }.toInt().coerceIn(0, 255)
+                    val domainFormula = when (formula) {
+                        CvtTempFormula.Temp1 -> ReadCvtTemperature.Formula.Temp1
+                        CvtTempFormula.Temp2 -> ReadCvtTemperature.Formula.Temp2
+                        CvtTempFormula.RawCount -> ReadCvtTemperature.Formula.RawCount
                     }
-                    val temp = tempResult.getOrElse { throw it }
+                    val temp = ReadCvtTemperature.computeFromCount(n, domainFormula)
+                    val temp1 = ReadCvtTemperature.computeFromCount(n, ReadCvtTemperature.Formula.Temp1)
+                    if (formula != CvtTempFormula.RawCount && (temp < -30.0 || temp > 120.0)) {
+                        Log.w(TAG, "Temperature out of realistic range: $temp °C (expected -30 to 120)")
+                    }
                     errorCount = 0
+                    cvtApp?.updateOverlayCvtTemp1(temp1)
                     val displayValue = when (formula) {
                         CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> String.format("%.1f", temp)
-                        CvtTempFormula.RawCount -> temp.toInt().toString()
+                        CvtTempFormula.RawCount -> n.toString()
                     }
                     val unit = when (formula) {
                         CvtTempFormula.Temp1, CvtTempFormula.Temp2 -> "°C"
@@ -211,6 +228,7 @@ class MainViewModel : ViewModel() {
                 } catch (t: Throwable) {
                     errorCount++
                     addLogEntry("Poll error ($errorCount): ${t.message}")
+                    cvtApp?.updateOverlayCvtTemp1(null)
                     _state.update { it.copy(status = "Poll error: ${t.message}") }
                 }
                 delay(1000)

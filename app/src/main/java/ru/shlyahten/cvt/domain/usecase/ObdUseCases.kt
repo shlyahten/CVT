@@ -22,6 +22,24 @@ class ReadCvtTemperature(
         RawCount
     }
 
+    companion object {
+        private const val EQUATION_TEMP1 =
+            "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)"
+        private const val EQUATION_TEMP2 = "0.0000286*N*N*N - 0.00951*N*N + 1.46*N - 30.1"
+
+        /**
+         * Computes display value from raw PID 2103 count [N] using the same formulas as [createPidSpec].
+         */
+        fun computeFromCount(n: Int, formula: Formula): Double {
+            val nDouble = n.toDouble()
+            return when (formula) {
+                Formula.Temp1 -> CvtTempParser.convertCountToTemp1(n)
+                Formula.Temp2 -> ExpressionEvaluator.eval(EQUATION_TEMP2, mapOf("N" to nDouble))
+                Formula.RawCount -> nDouble
+            }
+        }
+    }
+
     /**
      * Execute CVT temperature reading with the specified formula.
      * @param formula The formula to use for temperature calculation.
@@ -62,7 +80,7 @@ class ReadCvtTemperature(
             Formula.Temp1 -> PidSpec(
                 name = "CVT temp 1",
                 modeAndPid = "2103",
-                equation = "(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)",
+                equation = EQUATION_TEMP1,
                 units = "°C",
                 headerHex = "7E1",
                 valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX,
@@ -70,7 +88,7 @@ class ReadCvtTemperature(
             Formula.Temp2 -> PidSpec(
                 name = "CVT temp 2",
                 modeAndPid = "2103",
-                equation = "0.0000286*N*N*N - 0.00951*N*N + 1.46*N - 30.1",
+                equation = EQUATION_TEMP2,
                 units = "°C",
                 headerHex = "7E1",
                 valueIndex = CVT_2103_TEMP_COUNT_BYTE_INDEX,

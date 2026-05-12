@@ -1,9 +1,12 @@
 package ru.shlyahten.cvt
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -25,12 +28,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +60,15 @@ class MainActivity : ComponentActivity() {
             if (allGranted) vm.refreshBondedDevices()
         }
 
+    private val requestPostNotificationsPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                tryStartFloatingOverlayAfterPermissions()
+            } else {
+                vm.setFloatingOverlayDesired(false)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         vm = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
@@ -73,6 +87,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     },
+                    onFloatingOverlayChange = { enabled -> onFloatingOverlayChange(enabled) },
                     vm = vm
                 )
             }
@@ -88,6 +103,44 @@ class MainActivity : ComponentActivity() {
         vm.setHasConnectPermission(granted)
         vm.refreshBondedDevices()
     }
+
+    override fun onResume() {
+        super.onResume()
+        if (::vm.isInitialized && vm.state.value.floatingOverlayDesired) {
+            if (hasPostNotificationsPermission() && Settings.canDrawOverlays(this)) {
+                CvtOverlayService.start(this)
+            }
+        }
+    }
+
+    fun onFloatingOverlayChange(enabled: Boolean) {
+        vm.setFloatingOverlayDesired(enabled)
+        if (!enabled) {
+            CvtOverlayService.stop(this)
+            return
+        }
+        tryStartFloatingOverlayAfterPermissions()
+    }
+
+    private fun tryStartFloatingOverlayAfterPermissions() {
+        if (!hasPostNotificationsPermission()) {
+            requestPostNotificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName"),
+            )
+            startActivity(intent)
+            return
+        }
+        CvtOverlayService.start(this)
+    }
+
+    private fun hasPostNotificationsPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
 }
 
 @Composable
@@ -95,6 +148,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     modifier: Modifier = Modifier,
     requestBtPermission: () -> Unit = {},
+    onFloatingOverlayChange: (Boolean) -> Unit = {},
     vm: MainViewModel = viewModel(),
 ) {
     val ctx = LocalContext.current
@@ -212,6 +266,23 @@ fun MainScreen(
                 }
             }
 
+            Card {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.screen_main_floating_widget_title), style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.screen_main_floating_widget_label), modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = state.floatingOverlayDesired,
+                            onCheckedChange = onFloatingOverlayChange,
+                        )
+                    }
+                }
+            }
+
             // Oil
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -300,6 +371,7 @@ fun GreetingPreview() {
         MainScreen(
             modifier = Modifier.fillMaxSize(),
             requestBtPermission = {},
+            onFloatingOverlayChange = {},
             vm = viewModel()
         )
     }
