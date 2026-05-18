@@ -60,3 +60,4 @@ htmlcov/
 ```
 local.properties
 /.qwen
+/.opencode
