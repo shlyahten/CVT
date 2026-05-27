@@ -57,15 +57,22 @@ interface ObdRepository : Closeable {
 
 /**
  * Implementation of [ObdRepository] that handles Bluetooth communication and ELM327 protocol.
+ * Supports demo mode with synthetic data generation when real OBD connection is not available.
  */
 class ObdRepositoryImpl(
     private val bluetoothAdapter: BluetoothAdapter?,
+    private val demoModeManager: DemoModeManager? = null,
 ) : ObdRepository {
     
     private var connection: BluetoothSppClient.Connection? = null
     private var session: Elm327Session? = null
     
     override fun getBondedDevices(): List<BluetoothDevice> {
+        // In demo mode, return empty list (no real devices needed)
+        if (demoModeManager?.isDemoModeEnabled() == true) {
+            return emptyList()
+        }
+        
         val adapter = bluetoothAdapter ?: return emptyList()
         return runCatching {
             BluetoothSppClient(adapter).getBondedDevices()
@@ -74,6 +81,13 @@ class ObdRepositoryImpl(
     
     override suspend fun connect(deviceAddress: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            // Check if demo mode is enabled
+            if (demoModeManager?.isDemoModeEnabled() == true) {
+                Log.d("OBD", "Demo mode: simulated connection successful")
+                // In demo mode, skip actual Bluetooth connection
+                return@runCatching
+            }
+            
             val adapter = bluetoothAdapter ?: error("BluetoothAdapter is null")
             adapter.cancelDiscovery()
             
@@ -95,11 +109,22 @@ class ObdRepositoryImpl(
         connection = null
     }
     
-    override fun isConnected(): Boolean = session != null
+    override fun isConnected(): Boolean {
+        // In demo mode, always report as connected
+        if (demoModeManager?.isDemoModeEnabled() == true) {
+            return true
+        }
+        return session != null
+    }
     
     override fun getSession(): Elm327Session? = session
     
     override suspend fun queryPid(spec: PidSpec): Result<Double> = withContext(Dispatchers.IO) {
+        // Check if demo mode is enabled
+        if (demoModeManager?.isDemoModeEnabled() == true) {
+            return@withContext generateSyntheticPidResult(spec)
+        }
+        
         runCatching {
             val currentSession = session ?: error("Not connected to OBD device")
             
@@ -131,6 +156,33 @@ class ObdRepositoryImpl(
             
             val variables = ObdVariableMapping.fromDataBytes(data, spec.valueIndex)
             ExpressionEvaluator.eval(spec.equation, variables)
+        }
+    }
+    
+    /**
+     * Generate synthetic PID results for demo mode.
+     * Provides realistic fake data based on the requested PID.
+     */
+    private fun generateSyntheticPidResult(spec: PidSpec): Result<Double> {
+        return runCatching {
+            when (spec.modeAndPid) {
+                "2103" -> {
+                    // CVT Temperature PID - generate realistic temperature reading
+                    val rawCount = demoModeManager?.generateSyntheticCvtTempRawCount() ?: 95
+                    val variables = mapOf("N" to rawCount.toDouble())
+                    ExpressionEvaluator.eval(spec.equation, variables)
+                }
+                "2110" -> {
+                    // Oil degradation PID - generate realistic degradation percentage
+                    val degradation = demoModeManager?.generateSyntheticOilDegradation() ?: 15L
+                    degradation.toDouble()
+                }
+                else -> {
+                    // Default: return a reasonable synthetic value
+                    Log.w("OBD", "Demo mode: unknown PID ${spec.modeAndPid}, returning synthetic value")
+                    50.0 // Default fallback value
+                }
+            }
         }
     }
     

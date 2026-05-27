@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.shlyahten.cvt.CvtApp
 import ru.shlyahten.cvt.R
+import ru.shlyahten.cvt.data.repository.DemoModeManager
 import ru.shlyahten.cvt.data.repository.ObdRepository
 import ru.shlyahten.cvt.data.repository.ObdRepositoryImpl
 import ru.shlyahten.cvt.domain.usecase.ManageObdConnection
@@ -36,6 +37,7 @@ data class UiState(
     val cvtTempFormula: CvtTempFormula = CvtTempFormula.Temp1,
     val oilDegradation: Long? = null,
     val floatingOverlayDesired: Boolean = false,
+    val isDemoMode: Boolean = true,  // Demo mode state for UI
 )
 
 enum class CvtTempFormula { Temp1, Temp2, RawCount }
@@ -54,6 +56,7 @@ class MainViewModel : ViewModel() {
     private lateinit var manageConnection: ManageObdConnection
     private lateinit var readCvtTemperature: ReadCvtTemperature
     private lateinit var readOilDegradation: ReadOilDegradation
+    private lateinit var demoModeManager: DemoModeManager
 
     private var cvtApp: CvtApp? = null
 
@@ -83,12 +86,28 @@ class MainViewModel : ViewModel() {
      */
     fun initialize(context: Context) {
         val adapter = BluetoothAdapter.getDefaultAdapter()
-        obdRepository = ObdRepositoryImpl(adapter)
+        
+        // Initialize demo mode manager first
+        demoModeManager = DemoModeManager(context)
+        
+        // Pass demo mode manager to repository for conditional behavior
+        obdRepository = ObdRepositoryImpl(adapter, demoModeManager)
         manageConnection = ManageObdConnection(obdRepository)
         readCvtTemperature = ReadCvtTemperature(obdRepository)
         readOilDegradation = ReadOilDegradation(obdRepository)
         cvtApp = context.applicationContext as CvtApp
+        
+        // Update UI state with current demo mode status
+        _state.update { it.copy(isDemoMode = demoModeManager.isDemoModeEnabled()) }
+        
         addLogEntry(context.getString(R.string.log_app_initialized))
+        
+        // Add demo mode indicator to log
+        if (demoModeManager.isDemoModeEnabled()) {
+            addLogEntry("DEMO MODE ACTIVE - Using simulated OBD2 data")
+        } else {
+            addLogEntry("FULL MODE - Real Bluetooth OBD2 connection enabled")
+        }
     }
     
     fun refreshBondedDevices() {
@@ -124,8 +143,65 @@ class MainViewModel : ViewModel() {
         _state.update { it.copy(floatingOverlayDesired = enabled) }
     }
 
+    /**
+     * Toggle demo mode on/off.
+     * When enabled, uses synthetic OBD2 data instead of real Bluetooth connection.
+     * When disabled, restores full Bluetooth OBD2 functionality.
+     */
+    fun toggleDemoMode() {
+        val newIsDemoMode = demoModeManager.toggleDemoMode()
+        _state.update { it.copy(isDemoMode = newIsDemoMode) }
+        
+        if (newIsDemoMode) {
+            addLogEntry("Switched to DEMO MODE - Using simulated OBD2 data")
+            // In demo mode, disconnect from any real device and use synthetic data
+            disconnect()
+        } else {
+            addLogEntry("Switched to FULL MODE - Real Bluetooth OBD2 connection enabled")
+            // In full mode, user needs to manually connect to a device
+            addLogEntry("Please select a paired device and press Connect")
+        }
+    }
+
+    /**
+     * Set demo mode explicitly.
+     * @param enabled true for demo mode, false for full mode.
+     */
+    fun setDemoMode(enabled: Boolean) {
+        if (demoModeManager.isDemoModeEnabled() != enabled) {
+            toggleDemoMode()
+        }
+    }
+
     fun connect(context: Context) {
         val address = state.value.selectedDeviceAddress ?: return
+        
+        // In demo mode, simulate connection without Bluetooth
+        if (demoModeManager.isDemoModeEnabled()) {
+            addLogEntry("DEMO MODE: Simulating connection...")
+            _state.update { it.copy(isConnecting = true, status = "Connecting (demo)...") }
+            
+            viewModelScope.launch {
+                delay(500) // Simulate connection delay
+                withContext(Dispatchers.IO) {
+                    Log.d(TAG, "=== Demo mode: simulated connection ===")
+                    manageConnection.connect(address)
+                        .getOrElse { throw it }
+                }
+                _state.update { 
+                    it.copy(
+                        isConnecting = false, 
+                        isConnected = true, 
+                        status = "Connected (demo mode)"
+                    ) 
+                }
+                addLogEntry("DEMO MODE: Connection simulated successfully")
+                startPolling()
+            }
+            return
+        }
+        
+        // Full mode: real Bluetooth connection
         if (Build.VERSION.SDK_INT >= 31 && !state.value.hasConnectPermission) {
             addLogEntry(context.getString(R.string.log_missing_bluetooth_permission))
             _state.update { it.copy(status = context.getString(R.string.status_missing_bluetooth_permission)) }

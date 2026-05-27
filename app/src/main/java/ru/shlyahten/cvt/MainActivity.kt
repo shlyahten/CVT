@@ -181,12 +181,88 @@ fun MainScreen(
                 }
             }
 
+            // Demo Mode Settings Card
+            Card {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.demo_mode_settings_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                stringResource(R.string.demo_mode_settings_summary),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = state.isDemoMode,
+                            onCheckedChange = { vm.setDemoMode(it) },
+                        )
+                    }
+                    
+                    // Demo mode active indicator banner
+                    if (state.isDemoMode) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    stringResource(R.string.demo_mode_active_indicator),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Button(onClick = { vm.setDemoMode(false) }) {
+                                    Text(stringResource(R.string.demo_mode_full_mode_button))
+                                }
+                            }
+                        }
+                        
+                        // Tutorial hint for first-time demo users
+                        Text(
+                            text = stringResource(R.string.demo_mode_tutorial_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        // Full mode: show button to switch back to demo
+                        Button(
+                            onClick = { vm.setDemoMode(true) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.demo_mode_demo_mode_button))
+                        }
+                    }
+                }
+            }
+
             // Devices
             Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.screen_main_device_title), style = MaterialTheme.typography.titleMedium)
 
-                    if (state.bondedDevices.isEmpty()) {
+                    // In demo mode, show a message instead of device list
+                    if (state.isDemoMode) {
+                        Text(
+                            text = "Demo mode: No Bluetooth device needed. Tap Connect to simulate.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else if (state.bondedDevices.isEmpty()) {
                         Text(stringResource(R.string.screen_main_no_paired_devices))
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -221,8 +297,11 @@ fun MainScreen(
                             Text(stringResource(R.string.screen_main_button_disconnect))
                         }
 
-                        Button(onClick = { vm.refreshBondedDevices() }) {
-                            Text(stringResource(R.string.screen_main_button_refresh))
+                        // Hide refresh button in demo mode
+                        if (!state.isDemoMode) {
+                            Button(onClick = { vm.refreshBondedDevices() }) {
+                                Text(stringResource(R.string.screen_main_button_refresh))
+                            }
                         }
                     }
 
@@ -297,6 +376,15 @@ fun MainScreen(
                         }
                         Text(state.oilDegradation?.toString()
                             ?: stringResource(R.string.screen_main_oil_no_data))
+                    }
+                    
+                    // Demo mode hint for oil degradation
+                    if (state.isDemoMode && state.isConnected) {
+                        Text(
+                            text = "Demo: Simulated oil degradation value",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

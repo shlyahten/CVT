@@ -86,4 +86,18 @@
     <string name="log_cvt_temp_value" formatted="false">CVT temp: %.1f °C</string>
     <string name="log_poll_error">Poll error (%1$d): %2$s</string>
     <string name="log_cleared_by_user">Log cleared by user</string>
+    
+    <!-- Demo Mode Strings -->
+    <string name="demo_mode_settings_title">Demo Mode</string>
+    <string name="demo_mode_settings_summary">Use simulated OBD2 data without Bluetooth connection</string>
+    <string name="demo_mode_toggle_label">Enable Demo Mode</string>
+    <string name="demo_mode_active_indicator">DEMO MODE ACTIVE</string>
+    <string name="demo_mode_full_mode_button">Switch to Full Mode</string>
+    <string name="demo_mode_demo_mode_button">Switch to Demo Mode</string>
+    <string name="demo_mode_tutorial_title">Welcome to Demo Mode!</string>
+    <string name="demo_mode_tutorial_description">This app can work in demo mode with simulated OBD2 data, no Bluetooth device required.</string>
+    <string name="demo_mode_tutorial_step_1">Demo mode shows realistic CVT temperature readings</string>
+    <string name="demo_mode_tutorial_step_2">Oil degradation is simulated based on typical values</string>
+    <string name="demo_mode_tutorial_step_3">Switch to Full Mode anytime to use real Bluetooth OBD2</string>
+    <string name="demo_mode_tutorial_got_it">Got it!</string>
 </resources>
