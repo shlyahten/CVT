@@ -269,8 +269,11 @@ fun MainScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         // Service indicator badge
-                        val badgeColor = if (state.isServiceRunning) AutoEmerald else AutoTextSecondary
-                        val badgeText = if (state.isServiceRunning) "BG SERVICE ACTIVE" else "STOPPED"
+                        val (badgeColor, badgeText) = when {
+                            state.isDemoMode -> AutoCyan to "DEMO MODE ACTIVE"
+                            state.isServiceRunning -> AutoEmerald to "BG SERVICE ACTIVE"
+                            else -> AutoTextSecondary to "STOPPED"
+                        }
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
@@ -500,7 +503,7 @@ private fun TemperatureDashboardCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    val statusDotColor = if (state.isConnected) AutoEmerald else if (state.isServiceRunning) AutoAmber else AutoTextSecondary
+                    val statusDotColor = if (state.isDemoMode) AutoCyan else if (state.isConnected) AutoEmerald else if (state.isServiceRunning) AutoAmber else AutoTextSecondary
                     Box(
                         modifier = Modifier
                             .size(10.dp)
@@ -550,7 +553,7 @@ private fun TemperatureDashboardCard(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "STOP MONITOR",
+                            text = if (state.isDemoMode) "STOP DEMO" else "STOP MONITOR",
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = Color.White
@@ -808,6 +811,131 @@ private fun ControlsAndSettingsSection(
                         checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
                     )
                 )
+            }
+        }
+    }
+
+    // Widget Demo Mode Card
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AutoSurface),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (state.isDemoMode) AutoCyan else AutoBorder
+        )
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_demo_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_demo_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Switch(
+                    checked = state.isDemoMode,
+                    onCheckedChange = { active ->
+                        val hasOverlayPermission = Settings.canDrawOverlays(ctx)
+                        if (active) {
+                            if (!hasOverlayPermission) {
+                                requestOverlayPermission()
+                            }
+                            vm.startDemoMode(ctx, cycle = true)
+                        } else {
+                            vm.stopDemoMode(ctx)
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            if (state.isDemoMode) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = state.demoCycleActive,
+                        onClick = { vm.setDemoCycle(ctx) },
+                        label = { Text(stringResource(R.string.screen_main_demo_cycle)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AutoCyan,
+                            selectedLabelColor = Color.Black,
+                            containerColor = AutoSurfaceCard,
+                            labelColor = AutoTextPrimary
+                        )
+                    )
+
+                    FilterChip(
+                        selected = !state.demoCycleActive && state.demoPresetTemp == 40.0,
+                        onClick = { vm.setDemoPresetTemp(ctx, 40.0) },
+                        label = { Text(stringResource(R.string.screen_main_demo_preset_cold)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF38BDF8),
+                            selectedLabelColor = Color.Black,
+                            containerColor = AutoSurfaceCard,
+                            labelColor = AutoTextPrimary
+                        )
+                    )
+
+                    FilterChip(
+                        selected = !state.demoCycleActive && state.demoPresetTemp == 75.0,
+                        onClick = { vm.setDemoPresetTemp(ctx, 75.0) },
+                        label = { Text(stringResource(R.string.screen_main_demo_preset_normal)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF22C55E),
+                            selectedLabelColor = Color.Black,
+                            containerColor = AutoSurfaceCard,
+                            labelColor = AutoTextPrimary
+                        )
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = !state.demoCycleActive && state.demoPresetTemp == 94.0,
+                        onClick = { vm.setDemoPresetTemp(ctx, 94.0) },
+                        label = { Text(stringResource(R.string.screen_main_demo_preset_warm)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFF59E0B),
+                            selectedLabelColor = Color.Black,
+                            containerColor = AutoSurfaceCard,
+                            labelColor = AutoTextPrimary
+                        )
+                    )
+
+                    FilterChip(
+                        selected = !state.demoCycleActive && state.demoPresetTemp == 106.0,
+                        onClick = { vm.setDemoPresetTemp(ctx, 106.0) },
+                        label = { Text(stringResource(R.string.screen_main_demo_preset_hot)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFEF4444),
+                            selectedLabelColor = Color.White,
+                            containerColor = AutoSurfaceCard,
+                            labelColor = AutoTextPrimary
+                        )
+                    )
+                }
             }
         }
     }

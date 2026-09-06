@@ -31,6 +31,18 @@
     <string name="screen_main_floating_widget_title">Плавающий виджет</string>
     <string name="screen_main_floating_widget_label">Показывать температуру CVT поверх всех окон (перетаскиваемый)</string>
 
+    <!-- Main Screen - Widget Demo Mode -->
+    <string name="screen_main_demo_title">Демо-режим виджета</string>
+    <string name="screen_main_demo_desc">Тестирование виджета и цветовых зон без подключения к автомобилю</string>
+    <string name="screen_main_demo_start">Запустить демо</string>
+    <string name="screen_main_demo_stop">Остановить демо</string>
+    <string name="screen_main_demo_cycle">Авто-цикл</string>
+    <string name="screen_main_demo_preset_cold">Холод (40°C)</string>
+    <string name="screen_main_demo_preset_normal">Норма (75°C)</string>
+    <string name="screen_main_demo_preset_warm">Нагрев (94°C)</string>
+    <string name="screen_main_demo_preset_hot">Перегрев (106°C)</string>
+    <string name="screen_main_demo_status">Демо-режим активен</string>
+
     <!-- Main Screen - Autostart & Background -->
     <string name="screen_main_autostart_title">Автозапуск на ГУ</string>
     <string name="screen_main_autostart_label">Запускать мониторинг при включении зажигания / ГУ Teyes</string>

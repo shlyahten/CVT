@@ -37,6 +37,9 @@ data class UiState(
     val floatingOverlayDesired: Boolean = true,
     val autostartDesired: Boolean = false,
     val autoconnectDesired: Boolean = true,
+    val isDemoMode: Boolean = false,
+    val demoCycleActive: Boolean = true,
+    val demoPresetTemp: Double? = null,
 )
 
 enum class CvtTempFormula { Temp1, Temp2, RawCount }
@@ -149,6 +152,16 @@ class MainViewModel : ViewModel() {
             }
         }
 
+        // Observe demo mode state
+        viewModelScope.launch {
+            CvtOverlayService.isDemoModeFlow.collectLatest { demo ->
+                _state.update { it.copy(isDemoMode = demo) }
+                if (demo) {
+                    addLogEntry("Demo mode active")
+                }
+            }
+        }
+
         addLogEntry(context.getString(R.string.log_app_initialized))
     }
 
@@ -256,6 +269,50 @@ class MainViewModel : ViewModel() {
         }
         addLogEntry("Requesting oil degradation (PID 2110)...")
         CvtOverlayService.readOilDegradation(context)
+    }
+
+    fun startDemoMode(context: Context, cycle: Boolean = true, fixedTemp: Double? = null) {
+        _state.update {
+            it.copy(
+                demoCycleActive = cycle,
+                demoPresetTemp = fixedTemp,
+                floatingOverlayDesired = true,
+            )
+        }
+        addLogEntry("Starting Demo Mode (cycle=$cycle, temp=$fixedTemp)...")
+        CvtOverlayService.startDemo(context, cycle = cycle, fixedTemp = fixedTemp)
+    }
+
+    fun stopDemoMode(context: Context) {
+        addLogEntry("Stopping Demo Mode...")
+        CvtOverlayService.stop(context)
+        _state.update { it.copy(isDemoMode = false) }
+    }
+
+    fun setDemoPresetTemp(context: Context, temp: Double) {
+        _state.update {
+            it.copy(
+                demoCycleActive = false,
+                demoPresetTemp = temp,
+            )
+        }
+        addLogEntry("Demo preset set to $temp°C")
+        if (state.value.isDemoMode) {
+            CvtOverlayService.setDemoTemp(context, temp)
+        } else {
+            startDemoMode(context, cycle = false, fixedTemp = temp)
+        }
+    }
+
+    fun setDemoCycle(context: Context) {
+        _state.update {
+            it.copy(
+                demoCycleActive = true,
+                demoPresetTemp = null,
+            )
+        }
+        addLogEntry("Demo switched to auto-cycle")
+        startDemoMode(context, cycle = true, fixedTemp = null)
     }
 }
 

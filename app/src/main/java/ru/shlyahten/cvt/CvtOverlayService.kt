@@ -59,15 +59,39 @@ class CvtOverlayService : Service() {
         const val ACTION_STOP = "ru.shlyahten.cvt.action.STOP"
         const val ACTION_RECONNECT = "ru.shlyahten.cvt.action.RECONNECT"
         const val ACTION_READ_OIL = "ru.shlyahten.cvt.action.READ_OIL"
+        const val ACTION_START_DEMO = "ru.shlyahten.cvt.action.START_DEMO"
+        const val ACTION_SET_DEMO_TEMP = "ru.shlyahten.cvt.action.SET_DEMO_TEMP"
+        const val EXTRA_DEMO_TEMP = "extra_demo_temp"
+        const val EXTRA_DEMO_CYCLE = "extra_demo_cycle"
 
         private val _isRunningFlow = MutableStateFlow(false)
         val isRunningFlow = _isRunningFlow.asStateFlow()
+
+        private val _isDemoModeFlow = MutableStateFlow(false)
+        val isDemoModeFlow = _isDemoModeFlow.asStateFlow()
 
         fun start(context: Context) {
             val intent = Intent(context, CvtOverlayService::class.java).apply {
                 action = ACTION_START
             }
             ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun startDemo(context: Context, cycle: Boolean = true, fixedTemp: Double? = null) {
+            val intent = Intent(context, CvtOverlayService::class.java).apply {
+                action = ACTION_START_DEMO
+                putExtra(EXTRA_DEMO_CYCLE, cycle)
+                fixedTemp?.let { putExtra(EXTRA_DEMO_TEMP, it) }
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun setDemoTemp(context: Context, temp: Double) {
+            val intent = Intent(context, CvtOverlayService::class.java).apply {
+                action = ACTION_SET_DEMO_TEMP
+                putExtra(EXTRA_DEMO_TEMP, temp)
+            }
+            context.startService(intent)
         }
 
         fun stop(context: Context) {
@@ -100,6 +124,7 @@ class CvtOverlayService : Service() {
 
     private var obdRepository: ObdRepository? = null
     private var pollJob: Job? = null
+    private var demoJob: Job? = null
 
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
@@ -124,7 +149,6 @@ class CvtOverlayService : Service() {
 
         setupOverlayIfEnabled()
         observeAppStateForOverlay()
-        startBackgroundMonitoring()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -134,10 +158,27 @@ class CvtOverlayService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_RECONNECT -> {
+                _isDemoModeFlow.value = false
+                app.setDemoMode(false)
+                demoJob?.cancel()
                 startBackgroundMonitoring()
             }
             ACTION_READ_OIL -> {
                 readOilDegradationAsync()
+            }
+            ACTION_START_DEMO -> {
+                val cycle = intent.getBooleanExtra(EXTRA_DEMO_CYCLE, true)
+                val temp = if (intent.hasExtra(EXTRA_DEMO_TEMP)) intent.getDoubleExtra(EXTRA_DEMO_TEMP, 75.0) else null
+                startDemoMonitoring(cycle, temp)
+            }
+            ACTION_SET_DEMO_TEMP -> {
+                val temp = intent.getDoubleExtra(EXTRA_DEMO_TEMP, 75.0)
+                setManualDemoTemp(temp)
+            }
+            ACTION_START, null -> {
+                if (!_isDemoModeFlow.value) {
+                    startBackgroundMonitoring()
+                }
             }
         }
         return START_STICKY
@@ -228,6 +269,88 @@ class CvtOverlayService : Service() {
                 val interval = settings.getPollIntervalMs().coerceAtLeast(300L)
                 delay(interval)
             }
+        }
+    }
+
+    private fun startDemoMonitoring(cycle: Boolean, fixedTemp: Double?) {
+        _isDemoModeFlow.value = true
+        app.setDemoMode(true)
+        pollJob?.cancel()
+        demoJob?.cancel()
+        serviceScope.launch(Dispatchers.IO) {
+            obdRepository?.disconnect()
+        }
+
+        settings.setOverlayEnabled(true)
+        setupOverlayIfEnabled()
+
+        if (fixedTemp != null && !cycle) {
+            setManualDemoTemp(fixedTemp)
+            return
+        }
+
+        demoJob = serviceScope.launch(Dispatchers.Default) {
+            var count = 80
+            var step = 6
+            while (isActive) {
+                val temp1 = CvtTempParser.convertCountToTemp1(count)
+                val temp2 = CvtTempParser.convertCountToTemp2(count)
+                val formula = settings.getFormula()
+                val displayTemp = when (formula) {
+                    CvtTempFormula.Temp1 -> temp1
+                    CvtTempFormula.Temp2 -> temp2
+                    CvtTempFormula.RawCount -> count.toDouble()
+                }
+
+                withContext(Dispatchers.Main) {
+                    app.updateData(displayTemp, count, true, "DEMO MODE (CYCLING)")
+                    val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
+                    updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, count))
+                }
+
+                delay(1200L)
+
+                count += step
+                if (count >= 200) {
+                    count = 200
+                    step = -6
+                } else if (count <= 80) {
+                    count = 80
+                    step = 6
+                }
+            }
+        }
+    }
+
+    private fun setManualDemoTemp(temp: Double) {
+        _isDemoModeFlow.value = true
+        app.setDemoMode(true)
+        pollJob?.cancel()
+        demoJob?.cancel()
+        serviceScope.launch(Dispatchers.IO) {
+            obdRepository?.disconnect()
+        }
+
+        settings.setOverlayEnabled(true)
+        setupOverlayIfEnabled()
+
+        val bestCount = (20..220).minByOrNull { n ->
+            abs(CvtTempParser.convertCountToTemp1(n) - temp)
+        } ?: 150
+
+        val temp1 = CvtTempParser.convertCountToTemp1(bestCount)
+        val temp2 = CvtTempParser.convertCountToTemp2(bestCount)
+        val formula = settings.getFormula()
+        val displayTemp = when (formula) {
+            CvtTempFormula.Temp1 -> temp1
+            CvtTempFormula.Temp2 -> temp2
+            CvtTempFormula.RawCount -> bestCount.toDouble()
+        }
+
+        serviceScope.launch(Dispatchers.Main) {
+            app.updateData(displayTemp, bestCount, true, "DEMO MODE (PRESET)")
+            val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
+            updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, bestCount))
         }
     }
 
@@ -463,7 +586,10 @@ class CvtOverlayService : Service() {
 
     override fun onDestroy() {
         _isRunningFlow.value = false
+        _isDemoModeFlow.value = false
+        app.setDemoMode(false)
         pollJob?.cancel()
+        demoJob?.cancel()
         serviceScope.cancel()
         removeOverlayView()
         obdRepository?.close()

@@ -26,9 +26,16 @@ class CvtApp : Application() {
     private val _oilDegradation = MutableStateFlow<Long?>(null)
     val oilDegradation: StateFlow<Long?> = _oilDegradation.asStateFlow()
 
+    private val _isDemoMode = MutableStateFlow(false)
+    val isDemoMode: StateFlow<Boolean> = _isDemoMode.asStateFlow()
+
     override fun onCreate() {
         super.onCreate()
         appSettings = AppSettings.getInstance(this)
+    }
+
+    fun setDemoMode(active: Boolean) {
+        _isDemoMode.value = active
     }
 
     fun updateOverlayCvtTemp1(celsius: Double?) {
