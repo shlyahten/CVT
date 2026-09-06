@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.mutableStateOf
+import ru.shlyahten.cvt.data.AppSettings
+import ru.shlyahten.cvt.ui.PermissionsScreen
+import ru.shlyahten.cvt.ui.PermissionsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -85,70 +90,155 @@ import ru.shlyahten.cvt.ui.theme.CVTTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var vm: MainViewModel
+    private lateinit var settings: AppSettings
+
+    private val permissionsState = mutableStateOf(PermissionsState())
+    private val showPermissionsScreen = mutableStateOf(false)
 
     private val requestBluetoothPermissions =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            val allGranted = permissions.values.all { it }
-            vm.setHasConnectPermission(allGranted)
-            if (allGranted) vm.refreshBondedDevices(this)
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            updatePermissionsState()
+            val btGranted = permissionsState.value.bluetoothGranted
+            vm.setHasConnectPermission(btGranted)
+            if (btGranted) vm.refreshBondedDevices(this)
         }
 
     private val requestPostNotificationsPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (!granted) {
-                vm.setFloatingOverlayDesired(this, false)
-            }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            updatePermissionsState()
+        }
+
+    private val requestAllPermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            updatePermissionsState()
+            val btGranted = permissionsState.value.bluetoothGranted
+            vm.setHasConnectPermission(btGranted)
+            if (btGranted) vm.refreshBondedDevices(this)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        settings = AppSettings.getInstance(this)
         vm = ViewModelProvider(this)[MainViewModel::class.java]
         vm.initialize(this)
+
+        updatePermissionsState()
+
+        val needsOnboarding = !settings.isOnboardingCompleted() || !permissionsState.value.bluetoothGranted
+        showPermissionsScreen.value = needsOnboarding
 
         enableEdgeToEdge()
         setContent {
             CVTTheme {
-                MainScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    requestBtPermission = {
-                        if (Build.VERSION.SDK_INT >= 31) {
-                            requestBluetoothPermissions.launch(
-                                arrayOf(
-                                    Manifest.permission.BLUETOOTH_CONNECT,
-                                    Manifest.permission.BLUETOOTH_SCAN,
-                                )
-                            )
-                        }
-                    },
-                    requestOverlayPermission = {
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName"),
-                        )
-                        startActivity(intent)
-                    },
-                    vm = vm
-                )
+                val currentPermState by permissionsState
+                val isShowingPerms by showPermissionsScreen
+
+                if (isShowingPerms) {
+                    BackHandler(enabled = currentPermState.canProceed && settings.isOnboardingCompleted()) {
+                        showPermissionsScreen.value = false
+                    }
+                    PermissionsScreen(
+                        state = currentPermState,
+                        onRequestBluetooth = ::requestBluetooth,
+                        onRequestNotifications = ::requestNotifications,
+                        onRequestOverlay = ::requestOverlay,
+                        onRequestAll = ::requestAllNeededPermissions,
+                        onContinue = {
+                            settings.setOnboardingCompleted(true)
+                            showPermissionsScreen.value = false
+                            vm.refreshBondedDevices(this@MainActivity)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    MainScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        requestBtPermission = ::requestBluetooth,
+                        requestOverlayPermission = ::requestOverlay,
+                        onOpenPermissions = { showPermissionsScreen.value = true },
+                        vm = vm
+                    )
+                }
             }
         }
-
-        checkInitialPermissions()
     }
 
-    private fun checkInitialPermissions() {
-        val granted = if (Build.VERSION.SDK_INT < 31) {
-            true
-        } else {
+    override fun onResume() {
+        super.onResume()
+        updatePermissionsState()
+        if (permissionsState.value.bluetoothGranted) {
+            vm.refreshBondedDevices(this)
+        }
+    }
+
+    private fun computePermissionsState(): PermissionsState {
+        val btGranted = if (Build.VERSION.SDK_INT >= 31) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
         }
-        vm.setHasConnectPermission(granted)
-        vm.refreshBondedDevices(this)
+        val notifGranted = if (Build.VERSION.SDK_INT >= 33) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        val overlayGranted = Settings.canDrawOverlays(this)
+        return PermissionsState(
+            bluetoothGranted = btGranted,
+            notificationsGranted = notifGranted,
+            overlayGranted = overlayGranted,
+        )
+    }
 
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
+    private fun updatePermissionsState() {
+        val state = computePermissionsState()
+        permissionsState.value = state
+        vm.setHasConnectPermission(state.bluetoothGranted)
+    }
+
+    private fun requestBluetooth() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            requestBluetoothPermissions.launch(
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                )
+            )
+        }
+    }
+
+    private fun requestNotifications() {
+        if (Build.VERSION.SDK_INT >= 33) {
             requestPostNotificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun requestOverlay() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName"),
+        )
+        startActivity(intent)
+    }
+
+    private fun requestAllNeededPermissions() {
+        val perms = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        if (perms.isNotEmpty()) {
+            requestAllPermissionsLauncher.launch(perms.toTypedArray())
         }
     }
 }
@@ -159,6 +249,7 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     requestBtPermission: () -> Unit = {},
     requestOverlayPermission: () -> Unit = {},
+    onOpenPermissions: () -> Unit = {},
     vm: MainViewModel = viewModel(),
 ) {
     val ctx = LocalContext.current
@@ -193,6 +284,19 @@ fun MainScreen(
                                 fontWeight = FontWeight.Bold,
                             )
                         }
+                    }
+                },
+                actions = {
+                    OutlinedButton(
+                        onClick = onOpenPermissions,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.permissions_topbar_button),
+                            color = AutoCyan,
+                            fontSize = 12.sp,
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

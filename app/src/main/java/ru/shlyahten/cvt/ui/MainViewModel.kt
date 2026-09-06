@@ -1,10 +1,13 @@
 package ru.shlyahten.cvt.ui
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,7 +88,16 @@ class MainViewModel : ViewModel() {
             )
         }
 
-        refreshBondedDevices(context)
+        val hasBtPermission = if (Build.VERSION.SDK_INT >= 31) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        _state.update { it.copy(hasConnectPermission = hasBtPermission) }
+
+        if (hasBtPermission) {
+            refreshBondedDevices(context)
+        }
 
         // Observe background service running state
         viewModelScope.launch {
@@ -141,9 +153,33 @@ class MainViewModel : ViewModel() {
     }
 
     fun refreshBondedDevices(context: Context? = null) {
+        val hasBtPermission = if (Build.VERSION.SDK_INT >= 31) {
+            if (context != null) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            } else {
+                state.value.hasConnectPermission
+            }
+        } else {
+            true
+        }
+
+        if (!hasBtPermission) {
+            _state.update { s ->
+                s.copy(
+                    hasConnectPermission = false,
+                    status = context?.getString(R.string.status_missing_bluetooth_permission) ?: "Missing Bluetooth permission",
+                )
+            }
+            return
+        }
+
         val bluetoothManager = context?.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
-        val devices = adapter?.bondedDevices?.toList().orEmpty()
+        val devices = try {
+            adapter?.bondedDevices?.toList().orEmpty()
+        } catch (e: SecurityException) {
+            emptyList()
+        }
 
         _state.update { s ->
             val selected = s.selectedDeviceAddress ?: devices.firstOrNull()?.address
@@ -153,6 +189,7 @@ class MainViewModel : ViewModel() {
             s.copy(
                 bondedDevices = devices.sortedBy { it.name ?: it.address },
                 selectedDeviceAddress = selected,
+                hasConnectPermission = true,
                 status = if (devices.isEmpty()) "No paired devices" else s.status,
             )
         }

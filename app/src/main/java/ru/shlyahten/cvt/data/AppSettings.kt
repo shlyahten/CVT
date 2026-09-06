@@ -82,6 +82,13 @@ class AppSettings(context: Context) {
         prefs.edit().putLong(KEY_POLL_INTERVAL_MS, ms).apply()
     }
 
+    fun isOnboardingCompleted(): Boolean =
+        prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "cvt_monitor_prefs"
         private const val KEY_DEVICE_ADDRESS = "pref_device_address"
@@ -93,6 +100,7 @@ class AppSettings(context: Context) {
         private const val KEY_OVERLAY_X = "pref_overlay_x"
         private const val KEY_OVERLAY_Y = "pref_overlay_y"
         private const val KEY_POLL_INTERVAL_MS = "pref_poll_interval_ms"
+        private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
 
         @Volatile
         private var instance: AppSettings? = null

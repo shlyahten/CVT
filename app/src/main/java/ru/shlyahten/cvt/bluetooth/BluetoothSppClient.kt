@@ -27,7 +27,11 @@ class BluetoothSppClient(
 
     fun getBondedDevices(): List<BluetoothDevice> {
         val a = adapter ?: return emptyList()
-        return a.bondedDevices?.toList().orEmpty()
+        return try {
+            a.bondedDevices?.toList().orEmpty()
+        } catch (e: SecurityException) {
+            emptyList()
+        }
     }
 
     fun connect(device: BluetoothDevice, uuid: UUID = SPP_UUID): Connection {
