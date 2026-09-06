@@ -81,34 +81,28 @@ object CvtTempParser {
      * Converts CVT temp count to temperature using formula 1.
      *
      * Formula: (0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)
+     * Implemented using Horner's method: 5 multiplications, 5 additions, 0 allocations.
      *
      * @param count CVT temp count (N value, 0-255)
      * @return Temperature in Celsius
      */
     fun convertCountToTemp1(count: Int): Double {
         val n = count.toDouble()
-        return (0.000000002344 * Math.pow(n, 5.0)) +
-                (-0.000001387 * Math.pow(n, 4.0)) +
-                (0.0003193 * Math.pow(n, 3.0)) +
-                (-0.03501 * Math.pow(n, 2.0)) +
-                (2.302 * n) +
-                (-36.6)
+        return ((((0.000000002344 * n - 0.000001387) * n + 0.0003193) * n - 0.03501) * n + 2.302) * n - 36.6
     }
 
     /**
      * Converts CVT temp count to temperature using formula 2.
      *
      * Formula: (0.0000286*N*N*N)+(-0.00951*N*N)+(1.46*N)+(-30.1)
+     * Implemented using Horner's method: 3 multiplications, 3 additions, 0 allocations.
      *
      * @param count CVT temp count (N value, 0-255)
      * @return Temperature in Celsius
      */
     fun convertCountToTemp2(count: Int): Double {
         val n = count.toDouble()
-        return (0.0000286 * n * n * n) +
-                (-0.00951 * n * n) +
-                (1.46 * n) +
-                (-30.1)
+        return ((0.0000286 * n - 0.00951) * n + 1.46) * n - 30.1
     }
 
     /**
