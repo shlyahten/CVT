@@ -130,4 +130,7 @@
     <string name="permissions_continue_btn">Перейти к монитору</string>
     <string name="permissions_bt_required_warning">Для работы приложения требуется разрешение на доступ к Bluetooth</string>
     <string name="permissions_topbar_button">Разрешения</string>
+
+    <!-- GitHub Link -->
+    <string name="screen_main_github_link">GitHub: https://github.com/shlyahten/CVT/</string>
 </resources>

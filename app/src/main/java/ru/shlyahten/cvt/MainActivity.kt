@@ -56,6 +56,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -69,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -1040,6 +1042,43 @@ private fun ControlsAndSettingsSection(
                     )
                 }
             }
+        }
+    }
+
+    // GitHub Link Footer
+    GitHubFooter()
+}
+
+@Composable
+private fun GitHubFooter(modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextButton(
+            onClick = {
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://github.com/shlyahten/CVT/")
+                ).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    ctx.startActivity(intent)
+                } catch (_: Exception) {
+                }
+            }
+        ) {
+            Text(
+                text = stringResource(R.string.screen_main_github_link),
+                color = AutoCyan,
+                fontSize = 13.sp,
+                textDecoration = TextDecoration.Underline
+            )
         }
     }
 }

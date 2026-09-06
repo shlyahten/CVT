@@ -1,13 +1,17 @@
-name: Android CI
+name: Android CI & Release
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
+    name: Test & Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -32,31 +36,116 @@ jobs:
     - name: Run Lint
       run: ./gradlew lintDebug
 
-    - name: Build Debug & Release APK
-      run: ./gradlew assembleDebug assembleRelease
-
-    - name: Build Debug & Release Bundle
-      run: ./gradlew bundleDebug bundleRelease
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: debug-apk
         path: app/build/outputs/apk/debug/*.apk
-        retention-days: 30
+        retention-days: 14
+
+  release:
+    name: Build & Publish Release
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Determine Next Version
+      id: version
+      run: |
+        git fetch --tags --force 2>/dev/null || true
+        PREV_TAG=$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null || echo "")
+        echo "Previous tag: '$PREV_TAG'"
+
+        if [ -z "$PREV_TAG" ]; then
+          NEW_TAG="v1.0.0"
+          VERSION_NAME="1.0.0"
+        else
+          CLEAN="${PREV_TAG#v}"
+          IFS="." read -r MAJOR MINOR PATCH <<< "$CLEAN"
+          MAJOR=${MAJOR:-1}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+
+          COMMITS=$(git log "$PREV_TAG..HEAD" --pretty=format:"%s")
+
+          if echo "$COMMITS" | grep -Eq "(breaking|BREAKING CHANGE|!:)"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif echo "$COMMITS" | grep -Eq "(feat|feature)(\(.*\))?:"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
+        fi
+
+        # Prevent collision if tag already exists in repository
+        while git rev-parse -q --verify "refs/tags/$NEW_TAG" >/dev/null; do
+          PATCH=$((PATCH + 1))
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
+        done
+
+        VERSION_CODE=$(git rev-list --count HEAD)
+
+        echo "Tag: $NEW_TAG"
+        echo "Version Name: $VERSION_NAME"
+        echo "Version Code: $VERSION_CODE"
+
+        echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+        echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+        echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+    - name: Build Release APK
+      run: |
+        ./gradlew assembleRelease \
+          "-PversionCode=${{ steps.version.outputs.version_code }}" \
+          "-PversionName=${{ steps.version.outputs.version_name }}"
+
+    - name: Prepare Release APK Asset
+      run: |
+        mkdir -p release-assets
+        cp app/build/outputs/apk/release/app-release.apk "release-assets/CVT-Monitor-${{ steps.version.outputs.tag }}.apk"
+
+    - name: Create GitHub Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.version.outputs.tag }}
+      run: |
+        gh release create "$TAG" \
+          "release-assets/CVT-Monitor-${TAG}.apk" \
+          --target "$GITHUB_SHA" \
+          --title "Release $TAG" \
+          --generate-notes
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: release-apk
-        path: app/build/outputs/apk/release/*.apk
-        retention-days: 30
-
-    - name: Upload Bundles
-      uses: actions/upload-artifact@v4
-      with:
-        name: bundles
-        path: |
-          app/build/outputs/bundle/debug/*.aab
-          app/build/outputs/bundle/release/*.aab
+        name: release-apk-${{ steps.version.outputs.tag }}
+        path: release-assets/*.apk
         retention-days: 30

@@ -11,12 +11,15 @@ android {
         }
     }
 
+    val propVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
+    val propVersionName = project.findProperty("versionName")?.toString() ?: "1.0"
+
     defaultConfig {
         applicationId = "ru.shlyahten.cvt"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = propVersionCode
+        versionName = propVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -28,6 +31,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     lint {
