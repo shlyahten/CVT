@@ -80,7 +80,7 @@ class ObdVariableMappingTest {
     }
 
     @Test
-    fun `test oil degradation formula AC*256+AD`() {
+    fun `test oil degradation formula AC times 256 plus AD`() {
         // Test case: AC=0x03, AD=0xE8 => 3*256 + 232 = 1000
         val data = byteArrayOf(
             0x00.toByte(), // AA (unused)
@@ -93,6 +93,28 @@ class ObdVariableMappingTest {
         val result = vars["AC"]!! * 256 + vars["AD"]!!
         
         assertEquals(1000.0, result, 0.001)
+    }
+
+    @Test
+    fun `test full 30-byte Torque mapping where byte 29 is AC and byte 30 is AD`() {
+        val data = ByteArray(32) { (it + 1).toByte() }
+        // data[0] is byte 1 -> A = 1.0
+        // data[13] is byte 14 -> N = 14.0
+        // data[25] is byte 26 -> Z = 26.0
+        // data[26] is byte 27 -> AA = 27.0
+        // data[27] is byte 28 -> AB = 28.0
+        // data[28] is byte 29 -> AC = 29.0
+        // data[29] is byte 30 -> AD = 30.0
+
+        val vars = ObdVariableMapping.fromDataBytes(data, valueIndex = 13)
+
+        assertEquals(1.0, vars["A"]!!, 0.001)
+        assertEquals(14.0, vars["N"]!!, 0.001)
+        assertEquals(26.0, vars["Z"]!!, 0.001)
+        assertEquals(27.0, vars["AA"]!!, 0.001)
+        assertEquals(28.0, vars["AB"]!!, 0.001)
+        assertEquals(29.0, vars["AC"]!!, 0.001)
+        assertEquals(30.0, vars["AD"]!!, 0.001)
     }
 
     @Test

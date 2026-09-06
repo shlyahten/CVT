@@ -10,6 +10,7 @@ import ru.shlyahten.cvt.obd.ObdPayloadDecoder
 import ru.shlyahten.cvt.obd.ObdResult
 import ru.shlyahten.cvt.obd.ObdErrorType
 import ru.shlyahten.cvt.obd.ObdException
+import ru.shlyahten.cvt.obd.CvtTempParser
 import ru.shlyahten.cvt.obd.ObdVariableMapping
 import ru.shlyahten.cvt.obd.PidSpec
 import android.bluetooth.BluetoothAdapter
@@ -117,9 +118,15 @@ class ObdRepositoryImpl(
             }
             
             val normalized = response.response.normalized
+            val req = spec.modeAndPid.trim().uppercase()
+            val modeHex = if (req.length >= 2) req.substring(0, 2) else "01"
+            val expMode = ((modeHex.toIntOrNull(16) ?: 0) + 0x40).toByte()
+            val pidHex = if (req.length >= 4) req.substring(2, 4) else ""
+            val expPid = pidHex.toIntOrNull(16)?.toByte()
+
             val mfPayload = ObdPayloadDecoder.parseIsoTpMultiFrame(listOf(normalized))
             val data = mfPayload
-                ?.takeIf { it.size >= 2 && it[0] == 0x61.toByte() && it[1] == 0x03.toByte() }
+                ?.takeIf { it.size >= 2 && it[0] == expMode && (expPid == null || it[1] == expPid) }
                 ?.let { payload ->
                     ObdPayloadDecoder.extractDataBytes(
                         spec.modeAndPid,
@@ -130,7 +137,19 @@ class ObdRepositoryImpl(
                 ?: return@runCatching throw ObdException("No payload for ${spec.modeAndPid}", ObdErrorType.PayloadNotFound)
             
             val variables = ObdVariableMapping.fromDataBytes(data, spec.valueIndex)
-            ExpressionEvaluator.eval(spec.equation, variables)
+
+            // High performance fast-path for CVT temperature equations (avoids AST/RPN allocation on every tick)
+            val normalizedEq = spec.equation.replace(" ", "")
+            when {
+                normalizedEq == "N" -> variables["N"] ?: 0.0
+                normalizedEq.contains("0.000000002344") -> {
+                    CvtTempParser.convertCountToTemp1((variables["N"] ?: 0.0).toInt())
+                }
+                normalizedEq.contains("0.0000286") -> {
+                    CvtTempParser.convertCountToTemp2((variables["N"] ?: 0.0).toInt())
+                }
+                else -> ExpressionEvaluator.eval(spec.equation, variables)
+            }
         }
     }
     

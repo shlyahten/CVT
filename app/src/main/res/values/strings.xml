@@ -29,7 +29,19 @@
 
     <!-- Main Screen - Floating overlay -->
     <string name="screen_main_floating_widget_title">Плавающий виджет</string>
-    <string name="screen_main_floating_widget_label">Показывать CVT Temp1 поверх других приложений</string>
+    <string name="screen_main_floating_widget_label">Показывать температуру CVT поверх всех окон (перетаскиваемый)</string>
+
+    <!-- Main Screen - Autostart & Background -->
+    <string name="screen_main_autostart_title">Автозапуск на ГУ</string>
+    <string name="screen_main_autostart_label">Запускать мониторинг при включении зажигания / ГУ Teyes</string>
+    <string name="screen_main_autoconnect_title">Автоподключение</string>
+    <string name="screen_main_autoconnect_label">Автоматически подключаться к последнему адаптеру</string>
+    <string name="screen_main_status_running">Сервис мониторинга активен в фоне</string>
+    <string name="screen_main_status_stopped">Сервис остановлен</string>
+    <string name="screen_main_temp_zone_cold">Прогрев (&lt;50°C)</string>
+    <string name="screen_main_temp_zone_normal">Рабочая норма (50–89°C)</string>
+    <string name="screen_main_temp_zone_warm">Повышенная (90–99°C)</string>
+    <string name="screen_main_temp_zone_hot">ПЕРЕГРЕВ (≥100°C)</string>
 
     <!-- Overlay widget -->
     <string name="overlay_cvt_temp1_placeholder">CVT Temp1: —</string>
