@@ -60,3 +60,10 @@ htmlcov/
 local.properties
 /.qwen
 /.opencode
+
+# Android Keystores & Signing Secrets
+*.jks
+*.keystore
+keystore_secrets.txt
+release.jks.base64
+

@@ -34,6 +34,7 @@ data class UiState(
     val cvtTempCount: Int? = null,
     val cvtTempFormula: CvtTempFormula = CvtTempFormula.Temp1,
     val oilDegradation: Long? = null,
+    val oilDegradationWeeklyDiff: Long? = null,
     val floatingOverlayDesired: Boolean = true,
     val autostartDesired: Boolean = false,
     val autoconnectDesired: Boolean = true,
@@ -88,6 +89,8 @@ class MainViewModel : ViewModel() {
                 floatingOverlayDesired = savedOverlay,
                 autostartDesired = savedAutostart,
                 autoconnectDesired = savedAutoconnect,
+                oilDegradation = app.oilDegradation.value,
+                oilDegradationWeeklyDiff = app.oilDegradationWeeklyDiff.value,
             )
         }
 
@@ -152,6 +155,13 @@ class MainViewModel : ViewModel() {
             }
         }
 
+        // Observe weekly degradation difference
+        viewModelScope.launch {
+            app.oilDegradationWeeklyDiff.collectLatest { diff ->
+                _state.update { it.copy(oilDegradationWeeklyDiff = diff) }
+            }
+        }
+
         // Observe demo mode state
         viewModelScope.launch {
             CvtOverlayService.isDemoModeFlow.collectLatest { demo ->
@@ -194,13 +204,29 @@ class MainViewModel : ViewModel() {
             emptyList()
         }
 
+        // Sort bonded devices with priority: saved device first, then OBDII / OBD devices, then others
+        val sortedDevices = devices.sortedWith(
+            compareBy<BluetoothDevice> { dev ->
+                settings?.getDevicePriority(dev.name, dev.address) ?: 3
+            }.thenBy { it.name ?: it.address }
+        )
+
         _state.update { s ->
-            val selected = s.selectedDeviceAddress ?: devices.firstOrNull()?.address
-            if (s.selectedDeviceAddress == null && selected != null) {
-                settings?.setSelectedDeviceAddress(selected)
+            val savedAddress = settings?.getSelectedDeviceAddress()
+            val selected = when {
+                s.selectedDeviceAddress != null && sortedDevices.any { it.address == s.selectedDeviceAddress } -> s.selectedDeviceAddress
+                savedAddress != null && sortedDevices.any { it.address == savedAddress } -> savedAddress
+                else -> sortedDevices.firstOrNull()?.address
             }
+
+            if (selected != null && selected != savedAddress) {
+                settings?.setSelectedDeviceAddress(selected)
+                val chosenDev = sortedDevices.find { it.address == selected }
+                settings?.setSelectedDeviceName(chosenDev?.name)
+            }
+
             s.copy(
-                bondedDevices = devices.sortedBy { it.name ?: it.address },
+                bondedDevices = sortedDevices,
                 selectedDeviceAddress = selected,
                 hasConnectPermission = true,
                 status = if (devices.isEmpty()) "No paired devices" else s.status,

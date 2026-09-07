@@ -24,6 +24,26 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = project.findProperty("KEYSTORE_FILE")?.toString()
+                ?: System.getenv("KEYSTORE_FILE")
+            val keystoreFile = keystorePath?.let { file(it) }
+
+            if (keystoreFile != null && keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = project.findProperty("KEYSTORE_PASSWORD")?.toString()
+                    ?: System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = project.findProperty("KEY_ALIAS")?.toString()
+                    ?: System.getenv("KEY_ALIAS")
+                keyPassword = project.findProperty("KEY_PASSWORD")?.toString()
+                    ?: System.getenv("KEY_PASSWORD")
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -31,7 +51,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     lint {
