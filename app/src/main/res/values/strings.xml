@@ -16,6 +16,9 @@
     <string name="screen_main_button_connecting">Connecting…</string>
     <string name="screen_main_button_disconnect">Disconnect</string>
     <string name="screen_main_button_refresh">Refresh</string>
+    <string name="screen_main_device_connected_prefix">Подключено:</string>
+    <string name="screen_main_device_button_change">Изменить</string>
+    <string name="screen_main_device_button_hide">Свернуть</string>
     <string name="screen_main_status_label">Status: %1$s</string>
 
     <!-- Main Screen - CVT Temperature -->
@@ -67,6 +70,7 @@
     <string name="screen_main_oil_title">CVT oil degradation (2110)</string>
     <string name="screen_main_oil_button_read">Read once</string>
     <string name="screen_main_oil_no_data">—</string>
+    <string name="screen_main_oil_weekly_subtitle">Прирост за 7 дней:</string>
 
     <!-- Main Screen - Last Raw Response -->
     <string name="screen_main_raw_title">Последний RAW ответ</string>

@@ -15,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import ru.shlyahten.cvt.data.AppSettings
 import ru.shlyahten.cvt.ui.PermissionsScreen
 import ru.shlyahten.cvt.ui.PermissionsState
@@ -575,6 +578,8 @@ private fun ControlsAndSettingsSection(
     requestOverlayPermission: () -> Unit
 ) {
     val ctx = LocalContext.current
+    var isDeviceSectionManuallyExpanded by rememberSaveable { mutableStateOf(false) }
+    val isDeviceSectionCollapsed = state.isConnected && !isDeviceSectionManuallyExpanded
 
     // Bluetooth permission card if needed
     if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
@@ -598,7 +603,7 @@ private fun ControlsAndSettingsSection(
         }
     }
 
-    // OBD Adapter Selection
+    // OBD Adapter Selection (Collapsible after connection)
     Card(
         colors = CardDefaults.cardColors(containerColor = AutoSurface),
         shape = RoundedCornerShape(14.dp),
@@ -610,46 +615,99 @@ private fun ControlsAndSettingsSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    stringResource(R.string.screen_main_device_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = AutoTextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-                OutlinedButton(
-                    onClick = { vm.refreshBondedDevices(ctx) },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (state.isConnected) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(AutoEmerald)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        stringResource(R.string.screen_main_device_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (state.isConnected) {
+                    OutlinedButton(
+                        onClick = { isDeviceSectionManuallyExpanded = !isDeviceSectionManuallyExpanded },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (isDeviceSectionManuallyExpanded)
+                                stringResource(R.string.screen_main_device_button_hide)
+                            else
+                                stringResource(R.string.screen_main_device_button_change),
+                            color = AutoCyan,
+                            fontSize = 12.sp
+                        )
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { vm.refreshBondedDevices(ctx) },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan)
+                    }
                 }
             }
 
-            if (state.bondedDevices.isEmpty()) {
+            if (isDeviceSectionCollapsed) {
+                val selectedDevice = state.bondedDevices.find { it.address == state.selectedDeviceAddress }
+                val devName = selectedDevice?.name ?: "OBDII"
+                val devAddr = selectedDevice?.address ?: state.selectedDeviceAddress ?: ""
                 Text(
-                    stringResource(R.string.screen_main_no_paired_devices),
-                    color = AutoTextSecondary,
-                    fontSize = 13.sp
+                    text = "${stringResource(R.string.screen_main_device_connected_prefix)} $devName ($devAddr)",
+                    color = AutoEmerald,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
                 )
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    state.bondedDevices.forEach { dev ->
-                        val selected = dev.address == state.selectedDeviceAddress
-                        FilterChip(
-                            selected = selected,
-                            onClick = { vm.selectDevice(dev.address) },
-                            label = {
-                                Text(
-                                    "${dev.name ?: "OBD Device"} (${dev.address})",
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AutoCyan,
-                                selectedLabelColor = Color.Black,
-                                containerColor = AutoSurfaceCard,
-                                labelColor = AutoTextPrimary
+                AnimatedVisibility(visible = !isDeviceSectionCollapsed) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (state.isConnected) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { vm.refreshBondedDevices(ctx) }) {
+                                    Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan, fontSize = 12.sp)
+                                }
+                            }
+                        }
+
+                        if (state.bondedDevices.isEmpty()) {
+                            Text(
+                                stringResource(R.string.screen_main_no_paired_devices),
+                                color = AutoTextSecondary,
+                                fontSize = 13.sp
                             )
-                        )
+                        } else {
+                            state.bondedDevices.forEach { dev ->
+                                val selected = dev.address == state.selectedDeviceAddress
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { vm.selectDevice(dev.address) },
+                                    label = {
+                                        Text(
+                                            "${dev.name ?: "OBD Device"} (${dev.address})",
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = AutoCyan,
+                                        selectedLabelColor = Color.Black,
+                                        containerColor = AutoSurfaceCard,
+                                        labelColor = AutoTextPrimary
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -968,14 +1026,38 @@ private fun ControlsAndSettingsSection(
                 ) {
                     Text(stringResource(R.string.screen_main_oil_button_read), color = Color.Black)
                 }
-                Text(
-                    text = state.oilDegradation?.let { "$it degr" }
-                        ?: stringResource(R.string.screen_main_oil_no_data),
-                    color = AutoTextPrimary,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = state.oilDegradation?.let { "$it degr" }
+                                ?: stringResource(R.string.screen_main_oil_no_data),
+                            color = AutoTextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        if (state.oilDegradation != null) {
+                            val diff = state.oilDegradationWeeklyDiff ?: 0L
+                            val diffText = if (diff > 0) " (+$diff)" else " ($diff)"
+                            val diffColor = if (diff > 50) AutoAmber else AutoEmerald
+                            Text(
+                                text = diffText,
+                                color = diffColor,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                    if (state.oilDegradation != null) {
+                        Text(
+                            text = "${stringResource(R.string.screen_main_oil_weekly_subtitle)} +${state.oilDegradationWeeklyDiff ?: 0}",
+                            color = AutoTextSecondary,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
             }
         }
     }

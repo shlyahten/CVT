@@ -26,12 +26,20 @@ class CvtApp : Application() {
     private val _oilDegradation = MutableStateFlow<Long?>(null)
     val oilDegradation: StateFlow<Long?> = _oilDegradation.asStateFlow()
 
+    private val _oilDegradationWeeklyDiff = MutableStateFlow<Long?>(null)
+    val oilDegradationWeeklyDiff: StateFlow<Long?> = _oilDegradationWeeklyDiff.asStateFlow()
+
     private val _isDemoMode = MutableStateFlow(false)
     val isDemoMode: StateFlow<Boolean> = _isDemoMode.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
         appSettings = AppSettings.getInstance(this)
+        val lastDegradation = appSettings.getLastOilDegradation()
+        if (lastDegradation != null) {
+            _oilDegradation.value = lastDegradation
+            _oilDegradationWeeklyDiff.value = appSettings.getWeeklyDegradationIncrease(lastDegradation)
+        }
     }
 
     fun setDemoMode(active: Boolean) {
@@ -51,6 +59,12 @@ class CvtApp : Application() {
 
     fun updateOilDegradation(degradation: Long?) {
         _oilDegradation.value = degradation
+        if (degradation != null) {
+            appSettings.recordOilDegradation(degradation)
+            _oilDegradationWeeklyDiff.value = appSettings.getWeeklyDegradationIncrease(degradation)
+        } else {
+            _oilDegradationWeeklyDiff.value = null
+        }
     }
 }
 

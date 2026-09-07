@@ -191,14 +191,25 @@ class CvtOverlayService : Service() {
             var consecutiveErrors = 0
 
             while (isActive) {
-                val targetAddress = settings.getSelectedDeviceAddress()
+                var targetAddress = settings.getSelectedDeviceAddress()
                 if (targetAddress.isNullOrBlank()) {
-                    withContext(Dispatchers.Main) {
-                        app.updateData(null, null, false, "No device selected")
-                        updateNotificationText("No paired device selected")
+                    val bonded = repo.getBondedDevices()
+                    val prioritized = bonded.minByOrNull { dev ->
+                        settings.getDevicePriority(dev.name, dev.address)
                     }
-                    delay(3000)
-                    continue
+                    if (prioritized != null) {
+                        targetAddress = prioritized.address
+                        settings.setSelectedDeviceAddress(targetAddress)
+                        settings.setSelectedDeviceName(prioritized.name)
+                        Log.i(TAG, "Auto-selected OBDII device: ${prioritized.name} (${prioritized.address})")
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            app.updateData(null, null, false, "No device selected")
+                            updateNotificationText("No paired device selected")
+                        }
+                        delay(3000)
+                        continue
+                    }
                 }
 
                 if (!repo.isConnected()) {
@@ -221,6 +232,18 @@ class CvtOverlayService : Service() {
                     }
                     Log.i(TAG, "Connected to OBD adapter!")
                     consecutiveErrors = 0
+
+                    // Automatically read oil degradation once immediately after connection
+                    try {
+                        val oilUseCase = ReadOilDegradation(repo)
+                        val degradation = oilUseCase.execute(ReadOilDegradation.Formula.Default).getOrThrow()
+                        Log.i(TAG, "Auto-read oil degradation after connect: $degradation")
+                        withContext(Dispatchers.Main) {
+                            app.updateOilDegradation(degradation)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to auto-read oil degradation on connect: ${e.message}")
+                    }
                 }
 
                 // Connected loop: query CVT temperature PID 2103
