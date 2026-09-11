@@ -26,6 +26,9 @@ class AppSettings(context: Context) {
 
     fun setSelectedDeviceAddress(address: String?) {
         prefs.edit().putString(KEY_DEVICE_ADDRESS, address).apply()
+        if (!address.isNullOrBlank()) {
+            addCustomDevice(address, getSelectedDeviceName())
+        }
     }
 
     fun getSelectedDeviceName(): String? =
@@ -33,6 +36,41 @@ class AppSettings(context: Context) {
 
     fun setSelectedDeviceName(name: String?) {
         prefs.edit().putString(KEY_DEVICE_NAME, name).apply()
+        val addr = getSelectedDeviceAddress()
+        if (!addr.isNullOrBlank() && !name.isNullOrBlank()) {
+            addCustomDevice(addr, name)
+        }
+    }
+
+    /**
+     * Set of custom/saved devices stored as "ADDRESS|NAME"
+     */
+    fun getCustomDevices(): List<Pair<String, String>> {
+        val rawSet = prefs.getStringSet(KEY_CUSTOM_DEVICES, emptySet()).orEmpty()
+        return rawSet.mapNotNull { entry ->
+            val parts = entry.split("|", limit = 2)
+            if (parts.isNotEmpty() && parts[0].isNotBlank()) {
+                val addr = parts[0].trim().uppercase()
+                val name = if (parts.size > 1 && parts[1].isNotBlank()) parts[1].trim() else "OBDII (Saved)"
+                addr to name
+            } else null
+        }
+    }
+
+    fun addCustomDevice(address: String, name: String?) {
+        val cleanAddr = address.trim().uppercase()
+        if (cleanAddr.isBlank()) return
+        val cleanName = if (!name.isNullOrBlank()) name.trim() else "OBDII (Saved)"
+        val existing = getCustomDevices().filterNot { it.first.equals(cleanAddr, ignoreCase = true) }
+        val updated = (existing + (cleanAddr to cleanName)).map { "${it.first}|${it.second}" }.toSet()
+        prefs.edit().putStringSet(KEY_CUSTOM_DEVICES, updated).apply()
+    }
+
+    fun removeCustomDevice(address: String) {
+        val cleanAddr = address.trim().uppercase()
+        val existing = getCustomDevices().filterNot { it.first.equals(cleanAddr, ignoreCase = true) }
+        val updated = existing.map { "${it.first}|${it.second}" }.toSet()
+        prefs.edit().putStringSet(KEY_CUSTOM_DEVICES, updated).apply()
     }
 
     fun isAutostartEnabled(): Boolean =
@@ -129,6 +167,7 @@ class AppSettings(context: Context) {
         private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
         private const val KEY_LAST_OIL_DEGRADATION = "pref_last_oil_degradation"
         private const val KEY_OIL_DEGRADATION_HISTORY = "pref_oil_degradation_history"
+        private const val KEY_CUSTOM_DEVICES = "pref_custom_devices"
 
         @Volatile
         private var instance: AppSettings? = null

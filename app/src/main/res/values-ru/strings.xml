@@ -1,0 +1,169 @@
+<resources>
+    <!-- App Name -->
+    <string name="app_name">CVT</string>
+
+    <!-- Main Screen - Top Bar -->
+    <string name="screen_main_top_bar_title">CVT (ELM327)</string>
+    <string name="badge_demo_mode">ДЕМО-РЕЖИМ</string>
+    <string name="badge_service_running">ФОНОВАЯ СЛУЖБА АКТИВНА</string>
+    <string name="badge_stopped">ОСТАНОВЛЕНО</string>
+
+    <!-- Main Screen - Dashboard & Status -->
+    <string name="screen_main_cvt_fluid_temp_header">ТЕМПЕРАТУРА ВАРИАТОРА CVT</string>
+    <string name="screen_main_zone_raw_data">RAW ДАННЫЕ</string>
+    <string name="screen_main_raw_count_display">Raw Count N = %d</string>
+    <string name="screen_main_button_start_monitor">ЗАПУСК МОНИТОРИНГА</string>
+    <string name="screen_main_button_stop_monitor">ОСТАНОВИТЬ</string>
+    <string name="screen_main_button_stop_demo">ОСТАНОВИТЬ ДЕМО</string>
+
+    <!-- Main Screen - Bluetooth Permission -->
+    <string name="screen_main_permission_message">Нужно разрешение Bluetooth для доступа к спаренным устройствам.</string>
+    <string name="screen_main_permission_button">Разрешить BLUETOOTH_CONNECT</string>
+
+    <!-- Main Screen - Device Selection -->
+    <string name="screen_main_device_title">Устройство OBD-II</string>
+    <string name="screen_main_no_paired_devices">Список пуст. Выполните поиск или укажите MAC-адрес вручную.</string>
+    <string name="screen_main_button_connect">Подключиться</string>
+    <string name="screen_main_button_connecting">Подключение…</string>
+    <string name="screen_main_button_disconnect">Отключиться</string>
+    <string name="screen_main_button_refresh">Обновить</string>
+    <string name="screen_main_button_scan">Поиск</string>
+    <string name="screen_main_button_scanning">Идёт поиск…</string>
+    <string name="screen_main_button_add_mac">Ввести MAC</string>
+    <string name="screen_main_button_bt_settings">Настройки BT</string>
+    <string name="screen_main_device_connected_prefix">Подключено:</string>
+    <string name="screen_main_device_button_change">Изменить</string>
+    <string name="screen_main_device_button_hide">Свернуть</string>
+    <string name="screen_main_status_label">Статус: %1$s</string>
+    <string name="screen_main_dialog_mac_title">Добавить адаптер по MAC-адресу</string>
+    <string name="screen_main_dialog_mac_desc">На ГУ Teyes и магнитолах с кастомным Bluetooth спаренные адаптеры иногда не отображаются в системе. Укажите MAC-адрес вашего ELM327 (например 00:1D:A5:68:98:8B или 11:22:33:44:55:66):</string>
+    <string name="screen_main_dialog_mac_label">MAC-адрес</string>
+    <string name="screen_main_dialog_mac_name_label">Имя устройства (необязательно)</string>
+    <string name="screen_main_dialog_mac_add">Сохранить</string>
+    <string name="screen_main_dialog_mac_cancel">Отмена</string>
+    <string name="screen_main_dialog_mac_error">Неверный формат MAC-адреса (должен быть AA:BB:CC:DD:EE:FF)</string>
+    <string name="screen_main_discovered_devices_title">Найденные устройства</string>
+    <string name="screen_main_pair_device_action">Спарить</string>
+    <string name="screen_main_device_select_action">Выбрать</string>
+    <string name="device_default_name">OBD-устройство</string>
+    <string name="device_unknown_name">Неизвестное устройство</string>
+
+    <!-- Main Screen - CVT Temperature -->
+    <string name="screen_main_cvt_temp_title">Формула температуры CVT</string>
+    <string name="screen_main_cvt_temp_chip_1">Temp 1 (PIDs.csv)</string>
+    <string name="screen_main_cvt_temp_chip_2">Temp 2 (Cubic)</string>
+    <string name="screen_main_cvt_temp_chip_3">Raw N</string>
+    <string name="screen_main_cvt_temp_value" formatted="false">%.1f °C</string>
+    <string name="screen_main_cvt_temp_raw_value" formatted="false">%d count</string>
+    <string name="screen_main_cvt_temp_no_data">—</string>
+
+    <!-- Main Screen - Settings & Overlay -->
+    <string name="screen_main_teyes_settings_title">Настройки Teyes и виджета</string>
+    <string name="screen_main_floating_widget_title">Плавающий виджет</string>
+    <string name="screen_main_floating_widget_label">Показывать температуру CVT поверх всех окон (перетаскиваемый)</string>
+    <string name="screen_main_grant_overlay_permission">Разрешить отображение поверх других окон</string>
+
+    <!-- Main Screen - Widget Demo Mode -->
+    <string name="screen_main_demo_title">Демо-режим виджета</string>
+    <string name="screen_main_demo_desc">Тестирование виджета и цветовых зон без подключения к автомобилю</string>
+    <string name="screen_main_demo_start">Запустить демо</string>
+    <string name="screen_main_demo_stop">Остановить демо</string>
+    <string name="screen_main_demo_cycle">Авто-цикл</string>
+    <string name="screen_main_demo_preset_cold">Холод (40°C)</string>
+    <string name="screen_main_demo_preset_normal">Норма (75°C)</string>
+    <string name="screen_main_demo_preset_warm">Нагрев (94°C)</string>
+    <string name="screen_main_demo_preset_hot">Перегрев (106°C)</string>
+    <string name="screen_main_demo_status">Демо-режим активен</string>
+
+    <!-- Main Screen - Autostart & Background -->
+    <string name="screen_main_autostart_title">Автозапуск на ГУ</string>
+    <string name="screen_main_autostart_label">Запускать мониторинг при включении зажигания / ГУ Teyes</string>
+    <string name="screen_main_autoconnect_title">Автоподключение</string>
+    <string name="screen_main_autoconnect_label">Автоматически подключаться к последнему адаптеру</string>
+    <string name="screen_main_status_running">Сервис мониторинга активен в фоне</string>
+    <string name="screen_main_status_stopped">Сервис остановлен</string>
+    <string name="screen_main_temp_zone_cold">Прогрев (&lt;50°C)</string>
+    <string name="screen_main_temp_zone_normal">Рабочая норма (50–89°C)</string>
+    <string name="screen_main_temp_zone_warm">Повышенная (90–99°C)</string>
+    <string name="screen_main_temp_zone_hot">ПЕРЕГРЕВ (≥100°C)</string>
+
+    <!-- Overlay widget -->
+    <string name="overlay_cvt_temp1_placeholder">CVT Temp1: —</string>
+    <string name="overlay_cvt_temp1_no_data">CVT Temp1: —</string>
+    <string name="overlay_cvt_temp1_value">CVT Temp1: %1$.1f °C</string>
+    <string name="overlay_notification_channel_name">Мониторинг CVT</string>
+    <string name="overlay_notification_title">CVT Temp1</string>
+    <string name="overlay_notification_text">Плавающий виджет активен</string>
+
+    <!-- Main Screen - Oil Degradation -->
+    <string name="screen_main_oil_title">Деградация масла CVT (PID 2110)</string>
+    <string name="screen_main_oil_button_read">Считать</string>
+    <string name="screen_main_oil_no_data">—</string>
+    <string name="screen_main_oil_weekly_subtitle">Прирост за 7 дней:</string>
+
+    <!-- Main Screen - Last Raw Response -->
+    <string name="screen_main_raw_title">Последний RAW ответ</string>
+
+    <!-- Main Screen - Journal/Log -->
+    <string name="screen_main_journal_title">Журнал</string>
+    <string name="screen_main_journal_button_copy">Копировать</string>
+    <string name="screen_main_journal_button_clear">Очистить</string>
+    <string name="screen_main_journal_clipboard_label">Журнал CVT</string>
+
+    <!-- Status Messages (used in UiState) -->
+    <string name="status_idle">Ожидание</string>
+    <string name="status_no_paired_devices">Нет спаренных устройств</string>
+    <string name="status_missing_bluetooth_permission">Отсутствует разрешение на Bluetooth</string>
+    <string name="status_connecting">Подключение…</string>
+    <string name="status_connected">Подключено</string>
+    <string name="status_connect_error">Ошибка подключения: %1$s</string>
+    <string name="status_not_connected">Не подключено</string>
+    <string name="status_oil_degradation_read">Деградация масла считана</string>
+    <string name="status_oil_read_error">Ошибка чтения деградации: %1$s</string>
+    <string name="status_poll_error">Ошибка опроса: %1$s</string>
+    <string name="status_ok">ОК</string>
+
+    <!-- Log Entries -->
+    <string name="log_app_initialized">Приложение инициализировано</string>
+    <string name="log_refreshing_bonded_devices">Обновление списка устройств…</string>
+    <string name="log_found_bonded_devices">Найдено устройств: %1$d</string>
+    <string name="log_bluetooth_permission_granted">Разрешение Bluetooth предоставлено</string>
+    <string name="log_missing_bluetooth_permission">Отсутствует разрешение BLUETOOTH_CONNECT</string>
+    <string name="log_connecting_to_device">Подключение к %1$s…</string>
+    <string name="log_opening_bluetooth_connection">Открытие Bluetooth-соединения…</string>
+    <string name="log_elm_initialized">ELM327 успешно инициализирован</string>
+    <string name="log_connection_established">Соединение установлено</string>
+    <string name="log_connection_failed">Ошибка подключения: %1$s</string>
+    <string name="log_disconnected">Отключено</string>
+    <string name="log_cannot_read_oil_not_connected">Невозможно считать деградацию: нет подключения</string>
+    <string name="log_reading_oil_degradation">Чтение деградации масла (2110)…</string>
+    <string name="log_oil_degradation_value">Деградация масла: %1$d</string>
+    <string name="log_oil_read_error">Ошибка чтения деградации: %1$s</string>
+    <string name="log_polling_cvt_temp">Опрос температуры CVT (%1$s)…</string>
+    <string name="log_cvt_temp_value" formatted="false">Температура CVT: %.1f °C</string>
+    <string name="log_poll_error">Ошибка опроса (%1$d): %2$s</string>
+    <string name="log_cleared_by_user">Журнал очищен пользователем</string>
+
+    <!-- Onboarding / Permissions Screen -->
+    <string name="permissions_title">Настройка разрешений</string>
+    <string name="permissions_subtitle">Для мониторинга температуры вариатора CVT и стабильной работы на ГУ Teyes приложению требуются разрешения</string>
+    <string name="permissions_status_granted">Предоставлено</string>
+    <string name="permissions_status_required">Требуется</string>
+    <string name="permissions_status_optional">Опционально</string>
+    <string name="permissions_bt_title">Доступ к Bluetooth</string>
+    <string name="permissions_bt_desc">Необходимо для подключения к адаптеру ELM327 OBD-II и получения данных вариатора.</string>
+    <string name="permissions_bt_btn">Разрешить доступ к Bluetooth</string>
+    <string name="permissions_notif_title">Фоновые уведомления</string>
+    <string name="permissions_notif_desc">Необходимо для работы фоновой службы мониторинга без принудительного закрытия системой Android.</string>
+    <string name="permissions_notif_btn">Разрешить уведомления</string>
+    <string name="permissions_overlay_title">Плавающий виджет поверх всех окон</string>
+    <string name="permissions_overlay_desc">Позволяет выводить температуру вариатора поверх Яндекс Навигатора и других приложений.</string>
+    <string name="permissions_overlay_btn">Настроить поверх окон</string>
+    <string name="permissions_grant_all_btn">Запросить разрешения</string>
+    <string name="permissions_continue_btn">Перейти к монитору</string>
+    <string name="permissions_bt_required_warning">Для работы приложения требуется разрешение на доступ к Bluetooth</string>
+    <string name="permissions_topbar_button">Разрешения</string>
+
+    <!-- GitHub Link -->
+    <string name="screen_main_github_link">GitHub: https://github.com/shlyahten/CVT/</string>
+</resources>

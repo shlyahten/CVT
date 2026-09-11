@@ -16,14 +16,28 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import ru.shlyahten.cvt.CvtApp
 import ru.shlyahten.cvt.CvtOverlayService
 import ru.shlyahten.cvt.R
 import ru.shlyahten.cvt.data.AppSettings
 
+data class DiscoveredBluetoothDevice(
+    val device: BluetoothDevice,
+    val name: String?,
+    val address: String,
+    val rssi: Short? = null,
+    val isBonded: Boolean = false,
+)
+
 data class UiState(
     val hasConnectPermission: Boolean = Build.VERSION.SDK_INT < 31,
     val bondedDevices: List<BluetoothDevice> = emptyList(),
+    val customDevices: List<Pair<String, String>> = emptyList(),
+    val discoveredDevices: List<DiscoveredBluetoothDevice> = emptyList(),
+    val isScanning: Boolean = false,
     val selectedDeviceAddress: String? = null,
     val isServiceRunning: Boolean = false,
     val isConnected: Boolean = false,
@@ -175,6 +189,8 @@ class MainViewModel : ViewModel() {
         addLogEntry(context.getString(R.string.log_app_initialized))
     }
 
+    private var scanReceiver: BroadcastReceiver? = null
+
     fun refreshBondedDevices(context: Context? = null) {
         val hasBtPermission = if (Build.VERSION.SDK_INT >= 31) {
             if (context != null) {
@@ -198,16 +214,40 @@ class MainViewModel : ViewModel() {
 
         val bluetoothManager = context?.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
-        val devices = try {
+        val systemDevices = try {
             adapter?.bondedDevices?.toList().orEmpty()
         } catch (e: SecurityException) {
             emptyList()
         }
 
-        // Sort bonded devices with priority: saved device first, then OBDII / OBD devices, then others
-        val sortedDevices = devices.sortedWith(
+        // Custom / saved devices from settings
+        val customDevicePairs = settings?.getCustomDevices().orEmpty()
+
+        // Combine system bonded devices and custom devices (reconstructed via adapter.getRemoteDevice)
+        val combinedMap = LinkedHashMap<String, BluetoothDevice>()
+        for (dev in systemDevices) {
+            combinedMap[dev.address.uppercase()] = dev
+        }
+        if (adapter != null) {
+            for ((addr, _) in customDevicePairs) {
+                val clean = addr.trim().uppercase()
+                if (!combinedMap.containsKey(clean)) {
+                    runCatching {
+                        adapter.getRemoteDevice(clean)
+                    }.getOrNull()?.let { dev ->
+                        combinedMap[clean] = dev
+                    }
+                }
+            }
+        }
+
+        val allDevices = combinedMap.values.toList()
+
+        // Sort devices with priority: saved device first, then OBDII / OBD devices, then others
+        val sortedDevices = allDevices.sortedWith(
             compareBy<BluetoothDevice> { dev ->
-                settings?.getDevicePriority(dev.name, dev.address) ?: 3
+                val name = dev.name ?: customDevicePairs.find { it.first.equals(dev.address, ignoreCase = true) }?.second
+                settings?.getDevicePriority(name, dev.address) ?: 3
             }.thenBy { it.name ?: it.address }
         )
 
@@ -216,30 +256,168 @@ class MainViewModel : ViewModel() {
             val selected = when {
                 s.selectedDeviceAddress != null && sortedDevices.any { it.address == s.selectedDeviceAddress } -> s.selectedDeviceAddress
                 savedAddress != null && sortedDevices.any { it.address == savedAddress } -> savedAddress
+                savedAddress != null -> savedAddress // Keep saved address even if not in list currently
                 else -> sortedDevices.firstOrNull()?.address
             }
 
             if (selected != null && selected != savedAddress) {
                 settings?.setSelectedDeviceAddress(selected)
                 val chosenDev = sortedDevices.find { it.address == selected }
-                settings?.setSelectedDeviceName(chosenDev?.name)
+                val chosenName = chosenDev?.name ?: customDevicePairs.find { it.first.equals(selected, ignoreCase = true) }?.second
+                settings?.setSelectedDeviceName(chosenName)
             }
 
             s.copy(
                 bondedDevices = sortedDevices,
+                customDevices = customDevicePairs,
                 selectedDeviceAddress = selected,
                 hasConnectPermission = true,
-                status = if (devices.isEmpty()) "No paired devices" else s.status,
+                status = if (sortedDevices.isEmpty() && selected == null) "No paired devices" else s.status,
             )
         }
     }
 
     fun selectDevice(address: String) {
-        settings?.setSelectedDeviceAddress(address)
-        val dev = state.value.bondedDevices.find { it.address == address }
-        settings?.setSelectedDeviceName(dev?.name)
-        _state.update { it.copy(selectedDeviceAddress = address) }
-        addLogEntry("Selected OBD device: ${dev?.name ?: address}")
+        val cleanAddr = address.trim().uppercase()
+        settings?.setSelectedDeviceAddress(cleanAddr)
+        val dev = state.value.bondedDevices.find { it.address.equals(cleanAddr, ignoreCase = true) }
+        val devName = dev?.name ?: state.value.customDevices.find { it.first.equals(cleanAddr, ignoreCase = true) }?.second
+        settings?.setSelectedDeviceName(devName)
+        _state.update { it.copy(selectedDeviceAddress = cleanAddr) }
+        addLogEntry("Selected OBD device: ${devName ?: cleanAddr}")
+    }
+
+    fun addManualDevice(context: Context, address: String, name: String? = null) {
+        val cleanAddr = address.trim().uppercase()
+        val cleanName = if (!name.isNullOrBlank()) name.trim() else "OBDII (Manual)"
+        settings?.addCustomDevice(cleanAddr, cleanName)
+        settings?.setSelectedDeviceAddress(cleanAddr)
+        settings?.setSelectedDeviceName(cleanName)
+        addLogEntry("Added manual OBD device: $cleanName ($cleanAddr)")
+        refreshBondedDevices(context)
+        selectDevice(cleanAddr)
+    }
+
+    fun removeCustomDevice(context: Context, address: String) {
+        settings?.removeCustomDevice(address)
+        addLogEntry("Removed custom device: $address")
+        refreshBondedDevices(context)
+    }
+
+    fun startDiscovery(context: Context) {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        if (adapter == null || !adapter.isEnabled) {
+            addLogEntry("Cannot scan: Bluetooth adapter is disabled or null")
+            return
+        }
+
+        stopDiscovery(context)
+
+        _state.update { it.copy(isScanning = true, discoveredDevices = emptyList()) }
+        addLogEntry("Started Bluetooth device discovery...")
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                val action = intent?.action ?: return
+                when (action) {
+                    BluetoothDevice.ACTION_FOUND -> {
+                        val device = if (Build.VERSION.SDK_INT >= 33) {
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                        } ?: return
+
+                        val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE)
+                        val devName = runCatching { device.name }.getOrNull()
+                        val devAddress = device.address
+
+                        _state.update { curr ->
+                            val existingIndex = curr.discoveredDevices.indexOfFirst { it.address.equals(devAddress, ignoreCase = true) }
+                            val isBonded = runCatching { device.bondState == BluetoothDevice.BOND_BONDED }.getOrDefault(false)
+                            val discovered = DiscoveredBluetoothDevice(
+                                device = device,
+                                name = devName,
+                                address = devAddress,
+                                rssi = if (rssi != Short.MIN_VALUE) rssi else null,
+                                isBonded = isBonded,
+                            )
+                            val updated = if (existingIndex >= 0) {
+                                curr.discoveredDevices.toMutableList().apply { set(existingIndex, discovered) }
+                            } else {
+                                curr.discoveredDevices + discovered
+                            }
+                            curr.copy(discoveredDevices = updated.sortedByDescending { it.rssi ?: Short.MIN_VALUE })
+                        }
+                    }
+                    BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                        _state.update { it.copy(isScanning = false) }
+                        addLogEntry("Bluetooth device discovery finished. Found ${_state.value.discoveredDevices.size} devices.")
+                    }
+                    BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                        refreshBondedDevices(context)
+                    }
+                }
+            }
+        }
+
+        scanReceiver = receiver
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        }
+        context.registerReceiver(receiver, filter)
+
+        try {
+            if (adapter.isDiscovering) {
+                adapter.cancelDiscovery()
+            }
+            adapter.startDiscovery()
+        } catch (e: SecurityException) {
+            addLogEntry("Scan failed: security exception (${e.message})")
+            _state.update { it.copy(isScanning = false) }
+        }
+    }
+
+    fun stopDiscovery(context: Context) {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        runCatching {
+            if (adapter?.isDiscovering == true) {
+                adapter.cancelDiscovery()
+            }
+        }
+        scanReceiver?.let {
+            runCatching { context.unregisterReceiver(it) }
+            scanReceiver = null
+        }
+        _state.update { it.copy(isScanning = false) }
+    }
+
+    fun pairDevice(context: Context, device: BluetoothDevice) {
+        addLogEntry("Initiating pairing with ${device.name ?: device.address}...")
+        try {
+            val bonded = device.createBond()
+            if (bonded) {
+                addLogEntry("Pairing request sent to ${device.address}")
+            } else {
+                addLogEntry("Pairing returned false for ${device.address}")
+            }
+        } catch (e: Exception) {
+            addLogEntry("Pairing error: ${e.message}")
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        scanReceiver?.let {
+            cvtApp?.let { app ->
+                runCatching { app.unregisterReceiver(it) }
+            }
+            scanReceiver = null
+        }
     }
 
     fun setHasConnectPermission(granted: Boolean) {
