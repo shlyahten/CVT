@@ -16,7 +16,7 @@
 - **Configuration**: `app/src/main/java/ru/shlyahten/cvt/config/VehicleConfigs.kt` (for PID definitions)
 
 ## Important Notes
-- **minSdkVersion**: 33 (Android 13) per `app/build.gradle.kts` (README claims 8.0+ but build takes precedence)
+- **minSdkVersion**: 26 (Android 8.0) per `app/build.gradle.kts`
 - **Language**: Kotlin with Jetpack Compose (UI in `ui/` package)
 - **Build system**: Gradle Kotlin DSL (`build.gradle.kts` files)
 - **CI**: GitHub Actions builds debug APK/bundle and runs unit tests (see `.github/workflows/android.yml`)

@@ -1,241 +1,331 @@
 # CVT Temperature Monitor for Mitsubishi Lancer X
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.x-purple?logo=kotlin)](https://kotlinlang.org/)
-[![Android](https://img.shields.io/badge/Android-8.0+-green?logo=android)](https://www.android.com/)
-[![Android CI](https://github.com/shlyahten/CVT/actions/workflows/android.yml/badge.svg)](https://github.com/shlyahten/CVT/actions/workflows/android.yml)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-latest-blue)](https://developer.android.com/jetpack/compose)
+<p align="center">
+  <a href="README.md"><b>English</b></a> •
+  <a href="README.ru.md"><b>Русский</b></a>
+</p>
 
-Android-приложение на **Kotlin + Jetpack Compose** для мониторинга температуры вариатора (CVT) автомобилей **Mitsubishi Lancer X** через адаптер **ELM327** по Bluetooth Classic (SPP).
-
-Оптимизировано как для смартфонов, так и для **автомагнитол (ГУ Teyes и других Android-устройств)**: включает фоновый сервис с автоподключением, плавающий оверлей поверх навигаторов и автозапуск при старте системы.
-
----
-
-## 📸 Скриншоты
-
-| Главный экран | Выбор устройства | Ошибка подключения |
-|:-------------:|:----------------:|:------------------:|
-| ![Main Screen](screenshots/main_screen.png) | ![Device Selection](screenshots/device_selection.png) | ![Connection Error](screenshots/connection_error.png) |
+<p align="center">
+  <img src="https://img.shields.io/badge/Kotlin-2.x-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.x" />
+  <img src="https://img.shields.io/badge/Android-8.0+_(API_26--36)-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 8.0+" />
+  <img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
+  <img src="https://img.shields.io/badge/Architecture-Clean_/_MVI-FF6F00?style=for-the-badge" alt="Clean Architecture" />
+  <a href="https://github.com/shlyahten/CVT/actions/workflows/android.yml"><img src="https://img.shields.io/github/actions/workflow/status/shlyahten/CVT/android.yml?branch=main&style=for-the-badge&label=Android%20CI" alt="Build Status" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License" /></a>
+</p>
 
 ---
 
-## ✨ Функции
+## 📌 Overview
 
-- 🌡️ **Чтение температуры CVT** — режимы Temp 1 (PIDs.csv), Temp 2 (кубическая аппроксимация), а также Raw N (сырое значение счетчика) по PID `2103` (header `7E1`)
-- 🎨 **Цветовые зоны температуры** — индикация прогрева (<50°C), нормы (50–89°C), повышенной (90–99°C) и перегрева (≥100°C)
-- 🪟 **Плавающий виджет (Overlay)** — перетаскиваемый компактный индикатор температуры поверх навигатора (Яндекс.Навигатор, 2ГИС)
-- 🚗 **Оптимизация для ГУ Teyes / Android-магнитол**:
-  - Фоновый Foreground Service (`CvtOverlayService`) для непрерывного опроса
-  - Автоподключение к последнему выбранному OBD-адаптеру
-  - Автозапуск службы при включении зажигания / загрузке ГУ (`BOOT_COMPLETED`, `QUICKBOOT_POWERON`, `com.ts.headunit.power.on`)
-  - Адаптивный ландшафтный двухколоночный интерфейс
-- 🛢️ **Деградация масла** (по запросу) — PID `2110`
-- 🔄 **Авто-обновление** данных ~1 раз в секунду с обработкой потери связи
-- 📋 **Лог событий** подключения и ошибок с возможностью копирования и очистки
-- 📱 **Современный UI** на Jetpack Compose с Material 3 и автомобильной тёмной темой
+**CVT Temperature Monitor** is a modern, high-precision Android application written in **Kotlin** and **Jetpack Compose** (Material 3). It monitors the Continuously Variable Transmission (**Jatco CVT JF011E / F1CJA / W1CJA**) fluid temperature and degradation counters in real-time via an **ELM327 OBD-II adapter** over Bluetooth Classic (SPP).
+
+While fully compatible with Android smartphones and tablets, the application is **specifically engineered for automotive Android Head Units (Teyes CC2 / CC2+ / CC3 / CC3 2K, Kingbeats, Joying, DUDU, Dasaita, and other Android radios)**. It features a persistent background foreground service, ignition autostart, auto-reconnect, and a movable floating overlay widget that sits smoothly on top of navigation apps like Yandex Navigator, 2GIS, Waze, and Google Maps.
 
 ---
 
-## 📋 Требования
+## 🚀 Key Features
 
-| Компонент | Требование |
-|-----------|------------|
-| **OS** | Android 8.0 (API 26) и выше |
-| **Bluetooth** | Обязателен Bluetooth Classic (SPP) |
-| **Адаптер** | ELM327 (v1.5 рекомендуется) или совместимый OBDII-адаптер |
-| **Автомобиль** | Mitsubishi Lancer X с вариатором CVT (или соплатформенный Outlander XL) |
+### 🌡️ Real-Time CVT Fluid Temperature
+- **Direct Transmission ECU Communication**: Queries ECU diagnostic Mode/PID `2103` using header `7E1` on CAN bus.
+- **Multiple Temperature Calculation Formulas**:
+  - **Temp 1 (PIDs.csv)**: 5th-degree polynomial formula providing high precision across the entire thermal curve.
+  - **Temp 2 (Cubic)**: Smooth cubic polynomial approximation.
+  - **Raw Count (N)**: Raw integer counter value directly from the ECU (byte 13) without mathematical transformation.
+- **Dynamic Color Zones**:
+  - 🔵 **Cold / Warm-up (< 50°C)**: Reminds the driver to avoid hard acceleration while transmission fluid is cold.
+  - 🟢 **Normal Operating Range (50°C – 89°C)**: Ideal operating temperature window.
+  - 🟡 **Elevated Load (90°C – 99°C)**: Transmission under heavier thermal stress (traffic jams, high ambient temperatures, mountain climbs).
+  - 🔴 **Overheating / Critical (≥ 100°C)**: Critical thermal stress warning to prevent fluid oxidation and transmission limp mode.
 
-> ⚠️ **Android 12+**: требуется системное разрешение `BLUETOOTH_CONNECT`.  
-> ⚠️ **Плавающий виджет**: требуется системное разрешение «Поверх других приложений» (`SYSTEM_ALERT_WINDOW`).
+### 🪟 Floating Overlay Widget
+- **Over-the-App Monitoring**: Compact, semi-transparent draggable widget floating over any running application (Yandex.Navigator, 2GIS, Google Maps, Spotify, etc.).
+- **Smart Memory**: Remembers its exact screen coordinates $(X, Y)$ across reboots and app launches.
+- **Live State Indication**: Mirrors the live temperature and updates its background color dynamically to match the current thermal zone.
+- **Interactive**: Single-tap immediately brings the main monitor screen to the foreground.
+
+### 🚗 Designed for Automotive Android Head Units (Teyes, Kingbeats, etc.)
+- **Persistent Background Service**: `CvtOverlayService` runs as an official Android Foreground Service (`connectedDevice` type), preventing background termination by aggressive OEM task managers.
+- **Automatic Connection**: Seamlessly connects to your last-used OBD adapter on service start.
+- **Ignition & Boot Autostart (`BootReceiver`)**: Listens to system broadcasts for cold boots, fast wakeups, and head unit power-on events:
+  - `android.intent.action.BOOT_COMPLETED`
+  - `android.intent.action.LOCKED_BOOT_COMPLETED`
+  - `android.intent.action.QUICKBOOT_POWERON`
+  - `com.htc.intent.action.QUICKBOOT_POWERON`
+  - `com.ts.headunit.power.on` *(proprietary Teyes wake intent)*
+- **Adaptive Responsive Layout**: Automatically switches to an ergonomic two-column landscape view on widescreen displays (≥ 600dp) and a sleek single-column layout on portrait phones.
+
+### 🧪 Widget Demo Mode
+- Test overlay positioning, visual layout, and color transitions directly from your desk without needing to connect to a car or adapter:
+  - **Auto Cycle**: Automatically simulates transmission warm-up through all thermal phases.
+  - **Manual Presets**: Instantly trigger Cold (40°C), Normal (75°C), Warm (94°C), and Overheat (106°C).
+
+### 🛢️ CVT Oil Degradation Counter (PID `2110`)
+- Reads the internal Jatco transmission oil degradation points counter stored in the ECU on demand.
+- **Weekly Delta Analysis**: Tracks degradation history and calculates the rolling 7-day point increase (`+N points`), highlighting high degradation rates in amber or green.
+
+### 📡 Advanced Bluetooth Management
+- **Device Prioritizer**: Automatically highlights and prioritizes OBD-II adapters (`OBDII`, `OBD2`, etc.) over audio devices and phones.
+- **In-App Bluetooth Discovery**: Scan and pair nearby devices without leaving the application.
+- **Manual MAC Address Input**: Solve the notorious Teyes issue where custom Bluetooth stacks hide paired OBD adapters from standard Android system APIs by manually entering the adapter's MAC address (e.g. `00:1D:A5:68:98:8B`).
+- **Device Aliasing**: Assign custom display names and remove obsolete devices.
+
+### 📋 Live Diagnostic Terminal
+- Real-time timestamped scrollable log displaying sent AT commands, raw hex responses, frame parsing states, and connection diagnostics.
+- One-tap clipboard copy and clear actions for quick debugging and troubleshooting.
 
 ---
 
-## 📥 Установка
+## 🚘 Vehicle & Hardware Compatibility
 
-### Для пользователей
+### Supported Vehicles
+Equipped with **Jatco CVT (JF011E / F1CJA / W1CJA)**:
+- **Mitsubishi Lancer X** (CY4A: 1.8L 4B10, 2.0L 4B11, 2.4L 4B12)
+- **Mitsubishi Outlander XL** (CW5W / CW6W)
+- **Mitsubishi ASX / RVR / Outlander Sport**
+- **Mitsubishi Delica D:5**
+- Other platform vehicles sharing the same Mitsubishi CVT ECU protocol.
 
-Скачайте готовый APK из артефактов GitHub Actions CI:
+### Supported Android Devices
+| Category | Requirement |
+|:---|:---|
+| **OS Version** | Android 8.0 (Oreo, API 26) through Android 16 (API 36) |
+| **Bluetooth** | Bluetooth Classic with SPP (Serial Port Profile) support |
+| **Head Units** | Teyes (CC2, CC2+, CC3, CC3 2K, SPRO), Kingbeats, Joying, DUDU, Dasaita, and any Android-based multimedia system |
 
-1. Перейдите на страницу [GitHub Actions](https://github.com/shlyahten/CVT/actions)
-2. Выберите последний успешный запуск рабочего процесса **Android CI**
-3. В разделе **Artifacts** скачайте:
-   - `release-apk` — оптимизированная релизная сборка
-   - `debug-apk` — отладочная сборка
-4. Установите APK на устройство (разрешите установку из неизвестных источников)
+### Recommended OBD-II Adapters
+- **Recommended**: Quality **ELM327 v1.5** Bluetooth adapter with **Microchip PIC18F25K80** microcontroller.
+- ⚠️ **Notice regarding ELM327 v2.1 clones**: Cheap "v2.1" clones with truncated firmware typically do not support custom ISO 15765-4 CAN 11-bit headers (`ATSH 7E1`) or multi-frame responses, resulting in `NO DATA` or connection errors.
 
-### Для разработчиков
+---
+
+## 🔑 Permissions Breakdown
+
+The app includes a dedicated first-launch onboarding screen to configure the necessary permissions:
+
+| Permission | API Level | Purpose |
+|:---|:---|:---|
+| `BLUETOOTH_CONNECT` | Android 12+ (API 31+) | Connect to paired Bluetooth OBD-II adapters. |
+| `BLUETOOTH_SCAN` | Android 12+ (API 31+) | Discover nearby Bluetooth adapters (`neverForLocation` flag). |
+| `ACCESS_FINE_LOCATION` | Android 8–11 (API 26–30) | Required by Android OS to perform Bluetooth discovery on older versions. |
+| `SYSTEM_ALERT_WINDOW` | All versions | Display the floating temperature widget over other apps. |
+| `POST_NOTIFICATIONS` | Android 13+ (API 33+) | Display ongoing foreground service status in the notification drawer. |
+| `RECEIVE_BOOT_COMPLETED`| All versions | Automatically start monitoring when the device boots or head unit powers on. |
+
+> 💡 **Tip for Android Head Units**: In your head unit's Android Settings, disable battery optimization (**Don't optimize / No restrictions**) for CVT to prevent the OS from killing the background service during sleep cycles.
+
+---
+
+## 📥 Installation
+
+### Method 1: Pre-built APK from GitHub Actions CI (Recommended)
+1. Go to the project's [GitHub Actions tab](https://github.com/shlyahten/CVT/actions).
+2. Select the latest successful run of the **Android CI** workflow.
+3. Scroll down to the **Artifacts** section and download:
+   - `release-apk` — Signed, optimized release build.
+   - `debug-apk` — Debug build with extended logging.
+4. Transfer the APK to your phone or head unit via USB drive or browser, and install (allow installation from unknown sources).
+
+### Method 2: Build from Source
+Ensure you have **JDK 17+** and **Android SDK** installed:
 
 ```bash
-# Клонирование репозитория
+# Clone the repository
 git clone https://github.com/shlyahten/CVT.git
 cd CVT
 
-# Сборка debug-версии
+# On Linux / macOS
 ./gradlew assembleDebug
 
-# Сборка release-версии
-./gradlew assembleRelease
-
-# Сборка Android App Bundle
-./gradlew bundleRelease
+# On Windows (PowerShell)
+.\gradlew.bat assembleDebug
 ```
 
-Собранные файлы:
-- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
-- Release APK: `app/build/outputs/apk/release/app-release-unsigned.apk`
-- Release Bundle: `app/build/outputs/bundle/release/app-release.aab`
+Compiled APK locations:
+- **Debug APK**: `app/build/outputs/apk/debug/app-debug.apk`
+- **Release APK**: `app/build/outputs/apk/release/app-release.apk`
+- **Release AAB**: `app/build/outputs/bundle/release/app-release.aab`
 
 ---
 
-## 🚀 Использование
+## 🚦 Quick Start Guide
 
-1. **Спарьте ELM327** в настройках Bluetooth Android
-   - PIN по умолчанию: обычно `1234` или `0000`
-2. **Запустите приложение CVT**
-3. **Выдайте разрешения**:
-   - `BLUETOOTH_CONNECT` (Android 12+)
-   - «Поверх других окон» (для плавающего виджета)
-   - «Уведомления» (для работы фонового сервиса)
-4. **Выберите устройство** из списка спаренных
-5. Нажмите **START MONITOR**
-6. **Настройки для автомагнитолы (Teyes)**:
-   - Включите переключатель **«Плавающий виджет»**, чтобы видеть температуру в навигаторах
-   - Включите **«Автозапуск на ГУ»** и **«Автоподключение»**, чтобы мониторинг активировался при включении зажигания / пробуждении ГУ
-
----
-
-## 🔧 PIDs и формулы
-
-### PID `2103` — Температура CVT
-
-```
-Header: 7E1
-ModeAndPID: 2103
-```
-
-**Формулы:**
-
-| Название | Формула |
-|----------|---------|
-| **Temp 1** (PIDs.csv) | `(0.000000002344*(N^5))+(-0.000001387*(N^4))+(0.0003193*(N^3))+(-0.03501*(N^2))+(2.302*N)+(-36.6)` |
-| **Temp 2** (Кубическая) | `(0.0000286*N*N*N)+(-0.00951*N*N)+(1.46*N)+(-30.1)` |
-| **Raw N** | Сырое значение счетчика байта `N` без пересчёта |
-
-### PID `2110` — Деградация масла (CVT Oil Degradation)
-
-```
-Header: 7E1
-ModeAndPID: 2110
-Formula: AC*256+AD
-```
-
-### Переменные
-
-| Переменная | Описание |
-|------------|----------|
-| `AA`, `AB`, `AC`, `AD`… | Байты данных после ответа `61 xx` |
-| `A`, `B`, `C`, `D`… | Алиасы к `AA`, `AB`, `AC`, `AD` |
-| `N` | Алиас к первому байту данных `AA` (основная переменная для формул CVT) |
+1. **Pair your ELM327 adapter**:
+   - Insert the adapter into your vehicle's OBD-II diagnostic port (located beneath the steering column).
+   - Turn on vehicle ignition.
+   - In Android **Bluetooth Settings**, search for devices and pair with `OBDII` (standard PIN is usually `1234` or `0000`).
+2. **Launch CVT App**:
+   - Grant Bluetooth and Notification permissions on the onboarding screen.
+   - Grant "Display over other apps" permission if you plan to use the floating overlay.
+3. **Select your OBD Adapter**:
+   - Select your paired adapter from the device list.
+   - *If your head unit hides paired devices*: Tap **"Enter MAC"** and input the adapter's MAC address directly.
+4. **Start Monitoring**:
+   - Tap **START MONITOR**.
+   - Watch live temperature readings update once per second.
+5. **Setup Head Unit Automation**:
+   - Toggle **Floating Widget** ON to keep the temperature gauge visible over your navigation app.
+   - Toggle **Autostart on Head Unit** and **Auto-connect** ON to have monitoring start seamlessly every time you turn the key.
 
 ---
 
-## ❗ Troubleshooting
+## 🔬 Technical Deep-Dive: OBD-II Protocol & Formulas
 
-| Проблема | Причина / Решение |
-|----------|-------------------|
-| **Нет адаптера в списке** | Спарьте адаптер в системных настройках Bluetooth Android |
-| **Виджет не появляется** | Разрешите приложению «Отображение поверх других окон» (`SYSTEM_ALERT_WINDOW`) в системных настройках |
-| **Сервис выгружается в фоне** | Отключите оптимизацию батареи («Не экономить заряд») для CVT в настройках Android |
-| **NO DATA / Ошибка опроса** | ЭБУ не отвечает на `2103`: проверьте протокол (ISO 15765-4 CAN 11bit 500k), включено ли зажигание, качество клона ELM327 |
-| **Connect error** | Адаптер занят другим приложением (Torque, Car Scanner и т.д.), либо неверный PIN |
-| **Адаптер не читает PID** | Используйте качественный ELM327 v1.5 (усечённые v2.1 часто не поддерживают расширенные PID Mitsubishi) |
+### ELM327 Initialization Sequence
+Communication is handled through [`Elm327Session.kt`](app/src/main/java/ru/shlyahten/cvt/elm/Elm327Session.kt) using standard AT commands:
+```text
+ATZ         -> Reset ELM327 chip
+ATE0        -> Echo off
+ATL0        -> Linefeeds off
+ATS0        -> Spaces off
+ATH1        -> Headers on
+ATSP6       -> Set protocol to ISO 15765-4 CAN (11-bit ID, 500 kbaud)
+ATSH7E1     -> Set CAN transmit header to 7E1 (CVT Transmission ECU)
+```
+
+### PID `2103`: CVT Fluid Temperature
+- **Mode & PID**: `2103`
+- **ECU Request Header**: `7E1`
+- **ECU Response Header**: `7E9` (with response payload starting with `61 03`)
+- **Data Index**: The raw temperature count byte $N$ is located at zero-based index `13` (`CVT_2103_TEMP_COUNT_BYTE_INDEX`) in the merged ISO-TP payload following `61 03`.
+
+```
+Example Response:
+7E9 10 12 61 03 02 02 00 B4 ... [Byte 13 = N]
+```
+
+#### Calculation Formulas:
+- **Temp 1 (5th order polynomial from Mitsubishi PIDs specification)**:
+  $$T_1(N) = 2.344 \cdot 10^{-9} N^5 - 1.387 \cdot 10^{-6} N^4 + 3.193 \cdot 10^{-4} N^3 - 0.03501 N^2 + 2.302 N - 36.6$$
+- **Temp 2 (Cubic approximation)**:
+  $$T_2(N) = 0.0000286 N^3 - 0.00951 N^2 + 1.46 N - 30.1$$
+- **Raw Count**:
+  $$T_{\text{raw}} = N$$
+
+### PID `2110`: CVT Oil Degradation
+- **Mode & PID**: `2110`
+- **ECU Request Header**: `7E1`
+- **Formula**:
+  $$\text{Degradation} = AC \cdot 256 + AD$$
+  *(where $AC$ and $AD$ are the respective response data bytes)*
 
 ---
 
-## 👨‍💻 Для разработчиков
+## 🏛️ Project Architecture
 
-### Архитектура
-
-Проект построен по модульному принципу Clean Architecture (Repository / Use Case) с разделением слоев:
+The project adheres to modern Android Clean Architecture and unidirectional data flow:
 
 ```
 app/src/main/java/ru/shlyahten/cvt/
-├── BootReceiver.kt          # Приём широковещательных интентов старта системы (Teyes / BOOT)
-├── CvtApp.kt                # Application-класс, инициализация каналов уведомлений
-├── CvtOverlayService.kt     # Foreground Service: непрерывный опрос OBD и плавающий виджет
-├── MainActivity.kt          # Compose UI: адаптивный интерфейс (телефон / планшет / ГУ)
-├── bluetooth/               # Bluetooth Classic (SPP) сокет-клиент
-├── config/                  # Конфигурация PID и автомобилей (VehicleConfigs)
+├── BootReceiver.kt              # Handles system wake & ignition broadcasts
+├── CvtApp.kt                    # Application setup & notification channels
+├── CvtOverlayService.kt         # Foreground Service & draggable WindowManager overlay
+├── MainActivity.kt              # Compose UI entry point & permissions flow
+├── bluetooth/
+│   └── BluetoothSppClient.kt    # Bluetooth Classic (RFCOMM/SPP) client
+├── config/
+│   └── VehicleConfigs.kt        # Vehicle & PID registry (declarative configurations)
 ├── data/
-│   ├── AppSettings.kt       # Настройки приложения (SharedPreferences)
-│   └── repository/          # Репозиторий для работы с OBD
-├── domain/                  # Бизнес-логика (UseCases, Models)
-├── elm/                     # Инициализация и парсинг ответов ELM327
-├── obd/                     # Декодирование OBD-данных, формулы
-├── ui/                      # Jetpack Compose UI + ViewModel + Dark Theme
-└── model/                   # UI-модели
+│   ├── AppSettings.kt           # SharedPreferences storage & degradation math
+│   └── repository/              # OBD repository implementation
+├── domain/
+│   ├── model/ObdModels.kt       # Domain models & entities
+│   └── usecase/                 # ReadCvtTemperature & ReadOilDegradation use cases
+├── elm/
+│   ├── Elm327Session.kt         # ELM327 AT protocol engine
+│   └── ElmResponseParser.kt     # Low-level ELM response parsing
+├── obd/
+│   ├── CvtPid2103.kt            # PID 2103 specifications & byte offset constants
+│   ├── CvtTempParser.kt         # Temperature payload decoder
+│   ├── ExpressionEvaluator.kt   # Mathematical formula parser (infix-to-postfix evaluator)
+│   └── ObdPayloadDecoder.kt     # Multi-frame ISO-TP byte assembler
+├── ui/
+│   ├── MainViewModel.kt         # UI StateFlow & orchestration
+│   ├── PermissionsScreen.kt     # First-run permissions onboarding UI
+│   └── theme/                   # Automotive dark theme (Colors, Shapes, Typography)
+└── model/
+    └── ErrorType.kt             # Typed error categorization
 ```
 
-### Как добавить новый PID / формулу
-
-1. Откройте [`VehicleConfigs.kt`](app/src/main/java/ru/shlyahten/cvt/config/VehicleConfigs.kt)
-2. Добавьте новый `PidConfig` или расширьте существующий:
+### Adding New PIDs or Vehicle Profiles
+Adding a new PID or vehicle model is fully declarative. Simply edit [`VehicleConfigs.kt`](app/src/main/java/ru/shlyahten/cvt/config/VehicleConfigs.kt):
 
 ```kotlin
-val NewPid = PidConfig(
-    modeAndPid = "21XX",
-    headerHex = "7E1",
-    formulas = mapOf(
-        "MyFormula" to "A*256+B-40"  // Пример формулы
+val CustomVehicle = VehicleConfig(
+    name = "My Vehicle CVT",
+    tempPid = PidConfig(
+        modeAndPid = "21XX",
+        headerHex = "7E1",
+        formulas = mapOf(
+            "Temp1" to "A * 256 + B - 40"
+        ),
+        valueIndex = 0
+    ),
+    oilDegradationPid = PidConfig(
+        modeAndPid = "2110",
+        headerHex = "7E1",
+        formulas = mapOf(
+            "Default" to "AC * 256 + AD"
+        )
     )
 )
 ```
 
-3. Обновите `VehicleConfig` и `allConfigs`
-4. Формулы поддерживают переменные `A`–`H`, `N`, арифметические операции и функции
+---
 
-### Сборка и тестирование
+## 🛠️ Testing & Verification
+
+Run automated test suites and linters directly from the command line:
 
 ```bash
-# Проверка линтером
-./gradlew lintDebug
-
-# Запуск unit-тестов
+# Run local JVM unit tests
 ./gradlew test
 
-# Запуск instrumented-тестов на подключенном устройстве
-./gradlew connectedAndroidTest
+# Run Android lint checks
+./gradlew lint
 
-# Сборка release-версии
-./gradlew assembleRelease
+# Run instrumented tests on connected device / emulator
+./gradlew connectedAndroidTest
 ```
+
+*(On Windows, use `.\gradlew.bat`)*
+
+---
+
+## ❓ Troubleshooting & FAQ
+
+| Problem | Cause | Solution |
+|:---|:---|:---|
+| **No devices shown in list** | Adapter is not paired in Android Bluetooth settings. | Open system Bluetooth settings, scan, and pair the adapter with PIN `1234` or `0000`. |
+| **Adapter not in list on Teyes head unit** | Teyes firmware isolates the Bluetooth phone stack from standard Android Bluetooth APIs. | Click **"Enter MAC"** in the app and type the adapter's MAC address manually. |
+| **Floating widget does not appear** | Missing `SYSTEM_ALERT_WINDOW` permission. | Open Android Settings → Apps → Special app access → **Display over other apps** → Enable for **CVT**. |
+| **Service stops when screen turns off** | OS battery optimization kills the process. | Disable battery optimization for the app (Settings → Battery → Unrestricted). |
+| **Connection Error / Timeout** | Another app is holding the adapter connection (e.g. Torque, Car Scanner, CVTz50). | Close other OBD apps and turn the car ignition off and on. |
+| **NO DATA / Bus Init Error** | The adapter is a faulty ELM327 v2.1 clone, or the vehicle ignition is OFF. | Verify vehicle ignition is ON. Ensure you are using an authentic ELM327 v1.5 with PIC18F25K80. |
+| **Temp reads -36.6°C or 0** | ECU returned all zeros or connection was interrupted. | Check the live diagnostic log for exact responses to PID `2103`. |
 
 ---
 
 ## 🤝 Contributing
 
-Вклад в проект приветствуется!
+Contributions, bug reports, and pull requests are warmly welcome! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) for full development guidelines.
 
-1. Создайте fork репозитория
-2. Создайте ветку `feature/your-feature-name`
-3. Внесите изменения и убедитесь, что тесты проходят
-4. Проверьте код линтером: `./gradlew lint`
-5. Отправьте Pull Request
-
-**Перед PR убедитесь:**
-- ✅ Код компилируется без ошибок
-- ✅ Unit-тесты проходят
-- ✅ Линтинг не выдаёт критичных предупреждений
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request.
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
-MIT License — см. файл [LICENSE](LICENSE), если присутствует.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📬 Контакты
+## 📬 Contact & Credits
 
-Автор: [shlyahten](https://github.com/shlyahten)
-Репозиторий: [github.com/shlyahten/CVT](https://github.com/shlyahten/CVT)
+- **Author**: [shlyahten](https://github.com/shlyahten)
+- **Repository**: [https://github.com/shlyahten/CVT](https://github.com/shlyahten/CVT)
+- **Reference PIDs & Community Research**: Mitsubishi Lancer X Out-Club & Drive2 automotive research communities.
