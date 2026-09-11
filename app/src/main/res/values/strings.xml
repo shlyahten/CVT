@@ -32,8 +32,10 @@
     <string name="screen_main_button_add_mac">Enter MAC</string>
     <string name="screen_main_button_bt_settings">BT Settings</string>
     <string name="screen_main_device_connected_prefix">Connected:</string>
+    <string name="screen_main_device_selected_prefix">Selected:</string>
     <string name="screen_main_device_button_change">Change</string>
     <string name="screen_main_device_button_hide">Collapse</string>
+    <string name="screen_main_device_button_expand">Expand</string>
     <string name="screen_main_status_label">Status: %1$s</string>
     <string name="screen_main_dialog_mac_title">Add Adapter by MAC Address</string>
     <string name="screen_main_dialog_mac_desc">On Teyes and custom Android head units, paired adapters may not appear in standard lists. Enter your ELM327 MAC address (e.g. 00:1D:A5:68:98:8B or 11:22:33:44:55:66):</string>

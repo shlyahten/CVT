@@ -19,9 +19,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -58,6 +60,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -591,8 +594,13 @@ private fun ControlsAndSettingsSection(
     requestOverlayPermission: () -> Unit
 ) {
     val ctx = LocalContext.current
-    var isDeviceSectionManuallyExpanded by rememberSaveable { mutableStateOf(false) }
-    val isDeviceSectionCollapsed = state.isConnected && !isDeviceSectionManuallyExpanded
+    var isDeviceSectionCollapsed by rememberSaveable { mutableStateOf(state.isConnected) }
+
+    LaunchedEffect(state.isConnected) {
+        if (state.isConnected) {
+            isDeviceSectionCollapsed = true
+        }
+    }
 
     // Bluetooth permission card if needed
     if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
@@ -713,7 +721,13 @@ private fun ControlsAndSettingsSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isDeviceSectionCollapsed = !isDeviceSectionCollapsed }
+                        .padding(vertical = 4.dp)
+                ) {
                     if (state.isConnected) {
                         Box(
                             modifier = Modifier
@@ -731,22 +745,11 @@ private fun ControlsAndSettingsSection(
                     )
                 }
 
-                if (state.isConnected) {
-                    OutlinedButton(
-                        onClick = { isDeviceSectionManuallyExpanded = !isDeviceSectionManuallyExpanded },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = if (isDeviceSectionManuallyExpanded)
-                                stringResource(R.string.screen_main_device_button_hide)
-                            else
-                                stringResource(R.string.screen_main_device_button_change),
-                            color = AutoCyan,
-                            fontSize = 12.sp
-                        )
-                    }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!isDeviceSectionCollapsed) {
                         OutlinedButton(
                             onClick = { vm.refreshBondedDevices(ctx) },
                             shape = RoundedCornerShape(8.dp)
@@ -754,24 +757,66 @@ private fun ControlsAndSettingsSection(
                             Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan, fontSize = 12.sp)
                         }
                     }
+
+                    OutlinedButton(
+                        onClick = { isDeviceSectionCollapsed = !isDeviceSectionCollapsed },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        val label = if (isDeviceSectionCollapsed) {
+                            if (state.isConnected) stringResource(R.string.screen_main_device_button_change)
+                            else stringResource(R.string.screen_main_device_button_expand)
+                        } else {
+                            stringResource(R.string.screen_main_device_button_hide)
+                        }
+                        val arrow = if (isDeviceSectionCollapsed) "▼" else "▲"
+                        Text(
+                            text = "$label $arrow",
+                            color = AutoCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 
-            if (isDeviceSectionCollapsed) {
+            AnimatedVisibility(visible = isDeviceSectionCollapsed) {
                 val selectedDevice = state.bondedDevices.find { it.address == state.selectedDeviceAddress }
                 val customDev = state.customDevices.find { it.first.equals(state.selectedDeviceAddress, ignoreCase = true) }
                 val devDefault = stringResource(R.string.device_default_name)
                 val devName = selectedDevice?.name ?: customDev?.second ?: devDefault
                 val devAddr = selectedDevice?.address ?: state.selectedDeviceAddress ?: ""
-                Text(
-                    text = "${stringResource(R.string.screen_main_device_connected_prefix)} $devName ($devAddr)",
-                    color = AutoEmerald,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            } else {
-                AnimatedVisibility(visible = !isDeviceSectionCollapsed) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val prefix = if (state.isConnected) {
+                    stringResource(R.string.screen_main_device_connected_prefix)
+                } else {
+                    stringResource(R.string.screen_main_device_selected_prefix)
+                }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isDeviceSectionCollapsed = false },
+                    color = AutoSurfaceCard.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (devAddr.isNotBlank()) "$prefix $devName ($devAddr)" else stringResource(R.string.screen_main_no_paired_devices),
+                            color = if (state.isConnected) AutoEmerald else AutoTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(visible = !isDeviceSectionCollapsed) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Quick Action Buttons: Scan, Enter MAC, System BT Settings
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -948,7 +993,6 @@ private fun ControlsAndSettingsSection(
                         }
                     }
                 }
-            }
         }
     }
 

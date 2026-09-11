@@ -32,8 +32,10 @@
     <string name="screen_main_button_add_mac">Ввести MAC</string>
     <string name="screen_main_button_bt_settings">Настройки BT</string>
     <string name="screen_main_device_connected_prefix">Подключено:</string>
+    <string name="screen_main_device_selected_prefix">Выбрано:</string>
     <string name="screen_main_device_button_change">Изменить</string>
     <string name="screen_main_device_button_hide">Свернуть</string>
+    <string name="screen_main_device_button_expand">Развернуть</string>
     <string name="screen_main_status_label">Статус: %1$s</string>
     <string name="screen_main_dialog_mac_title">Добавить адаптер по MAC-адресу</string>
     <string name="screen_main_dialog_mac_desc">На ГУ Teyes и магнитолах с кастомным Bluetooth спаренные адаптеры иногда не отображаются в системе. Укажите MAC-адрес вашего ELM327 (например 00:1D:A5:68:98:8B или 11:22:33:44:55:66):</string>
