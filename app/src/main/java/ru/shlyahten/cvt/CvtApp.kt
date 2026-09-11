@@ -34,6 +34,7 @@ class CvtApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        _connectionStatus.value = getString(R.string.status_idle)
         appSettings = AppSettings.getInstance(this)
         val lastDegradation = appSettings.getLastOilDegradation()
         if (lastDegradation != null) {

@@ -19,9 +19,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -45,6 +47,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -55,7 +58,9 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -181,7 +186,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
         } else {
-            true
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         }
         val notifGranted = if (Build.VERSION.SDK_INT >= 33) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
@@ -210,6 +215,13 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.BLUETOOTH_SCAN,
                 )
             )
+        } else {
+            requestBluetoothPermissions.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                )
+            )
         }
     }
 
@@ -235,6 +247,10 @@ class MainActivity : ComponentActivity() {
             }
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 perms.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.ACCESS_FINE_LOCATION)
             }
         }
         if (Build.VERSION.SDK_INT >= 33) {
@@ -275,9 +291,9 @@ fun MainScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         // Service indicator badge
                         val (badgeColor, badgeText) = when {
-                            state.isDemoMode -> AutoCyan to "DEMO MODE ACTIVE"
-                            state.isServiceRunning -> AutoEmerald to "BG SERVICE ACTIVE"
-                            else -> AutoTextSecondary to "STOPPED"
+                            state.isDemoMode -> AutoCyan to stringResource(R.string.badge_demo_mode)
+                            state.isServiceRunning -> AutoEmerald to stringResource(R.string.badge_service_running)
+                            else -> AutoTextSecondary to stringResource(R.string.badge_stopped)
                         }
                         Box(
                             modifier = Modifier
@@ -409,7 +425,7 @@ private fun TemperatureDashboardCard(
 
     val zoneLabel = when {
         temp == null -> "—"
-        formula == CvtTempFormula.RawCount -> "RAW DATA"
+        formula == CvtTempFormula.RawCount -> stringResource(R.string.screen_main_zone_raw_data)
         temp < 50.0 -> stringResource(R.string.screen_main_temp_zone_cold)
         temp in 50.0..89.9 -> stringResource(R.string.screen_main_temp_zone_normal)
         temp in 90.0..99.9 -> stringResource(R.string.screen_main_temp_zone_warm)
@@ -436,7 +452,7 @@ private fun TemperatureDashboardCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "CVT FLUID TEMPERATURE",
+                    text = stringResource(R.string.screen_main_cvt_fluid_temp_header),
                     color = AutoTextSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -494,7 +510,7 @@ private fun TemperatureDashboardCard(
 
                 state.cvtTempCount?.let { count ->
                     Text(
-                        text = "Raw Count N = $count",
+                        text = stringResource(R.string.screen_main_raw_count_display, count),
                         color = AutoTextSecondary,
                         fontSize = 13.sp,
                         fontFamily = FontFamily.Monospace
@@ -517,7 +533,7 @@ private fun TemperatureDashboardCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = state.status,
+                        text = if (state.status.isBlank() || state.status.equals("Idle", ignoreCase = true)) stringResource(R.string.status_idle) else state.status,
                         color = AutoTextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -542,7 +558,7 @@ private fun TemperatureDashboardCard(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "START MONITOR",
+                            text = stringResource(R.string.screen_main_button_start_monitor),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = Color.Black
@@ -558,7 +574,7 @@ private fun TemperatureDashboardCard(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = if (state.isDemoMode) "STOP DEMO" else "STOP MONITOR",
+                            text = if (state.isDemoMode) stringResource(R.string.screen_main_button_stop_demo) else stringResource(R.string.screen_main_button_stop_monitor),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = Color.White
@@ -578,8 +594,13 @@ private fun ControlsAndSettingsSection(
     requestOverlayPermission: () -> Unit
 ) {
     val ctx = LocalContext.current
-    var isDeviceSectionManuallyExpanded by rememberSaveable { mutableStateOf(false) }
-    val isDeviceSectionCollapsed = state.isConnected && !isDeviceSectionManuallyExpanded
+    var isDeviceSectionCollapsed by rememberSaveable { mutableStateOf(state.isConnected) }
+
+    LaunchedEffect(state.isConnected) {
+        if (state.isConnected) {
+            isDeviceSectionCollapsed = true
+        }
+    }
 
     // Bluetooth permission card if needed
     if (Build.VERSION.SDK_INT >= 31 && !state.hasConnectPermission) {
@@ -603,6 +624,91 @@ private fun ControlsAndSettingsSection(
         }
     }
 
+    var showManualMacDialog by rememberSaveable { mutableStateOf(false) }
+    var manualMacInput by rememberSaveable { mutableStateOf("") }
+    var manualNameInput by rememberSaveable { mutableStateOf("") }
+    var manualMacError by rememberSaveable { mutableStateOf(false) }
+
+    if (showManualMacDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showManualMacDialog = false
+                manualMacError = false
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.screen_main_dialog_mac_title),
+                    fontWeight = FontWeight.Bold,
+                    color = AutoTextPrimary,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = stringResource(R.string.screen_main_dialog_mac_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                    OutlinedTextField(
+                        value = manualMacInput,
+                        onValueChange = {
+                            manualMacInput = it.uppercase()
+                            manualMacError = false
+                        },
+                        label = { Text(stringResource(R.string.screen_main_dialog_mac_label)) },
+                        placeholder = { Text("00:1D:A5:68:98:8B") },
+                        isError = manualMacError,
+                        supportingText = if (manualMacError) {
+                            { Text(stringResource(R.string.screen_main_dialog_mac_error), color = AutoRed) }
+                        } else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = manualNameInput,
+                        onValueChange = { manualNameInput = it },
+                        label = { Text(stringResource(R.string.screen_main_dialog_mac_name_label)) },
+                        placeholder = { Text("OBDII") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val mac = manualMacInput.trim()
+                        val macRegex = Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$")
+                        if (macRegex.matches(mac)) {
+                            vm.addManualDevice(ctx, mac, manualNameInput.takeIf { it.isNotBlank() })
+                            showManualMacDialog = false
+                            manualMacError = false
+                            manualMacInput = ""
+                            manualNameInput = ""
+                        } else {
+                            manualMacError = true
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AutoCyan)
+                ) {
+                    Text(stringResource(R.string.screen_main_dialog_mac_add), color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showManualMacDialog = false
+                    manualMacError = false
+                }) {
+                    Text(stringResource(R.string.screen_main_dialog_mac_cancel), color = AutoTextSecondary)
+                }
+            },
+            containerColor = AutoSurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     // OBD Adapter Selection (Collapsible after connection)
     Card(
         colors = CardDefaults.cardColors(containerColor = AutoSurface),
@@ -615,7 +721,13 @@ private fun ControlsAndSettingsSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isDeviceSectionCollapsed = !isDeviceSectionCollapsed }
+                        .padding(vertical = 4.dp)
+                ) {
                     if (state.isConnected) {
                         Box(
                             modifier = Modifier
@@ -633,54 +745,138 @@ private fun ControlsAndSettingsSection(
                     )
                 }
 
-                if (state.isConnected) {
-                    OutlinedButton(
-                        onClick = { isDeviceSectionManuallyExpanded = !isDeviceSectionManuallyExpanded },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = if (isDeviceSectionManuallyExpanded)
-                                stringResource(R.string.screen_main_device_button_hide)
-                            else
-                                stringResource(R.string.screen_main_device_button_change),
-                            color = AutoCyan,
-                            fontSize = 12.sp
-                        )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!isDeviceSectionCollapsed) {
+                        OutlinedButton(
+                            onClick = { vm.refreshBondedDevices(ctx) },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan, fontSize = 12.sp)
+                        }
                     }
-                } else {
+
                     OutlinedButton(
-                        onClick = { vm.refreshBondedDevices(ctx) },
+                        onClick = { isDeviceSectionCollapsed = !isDeviceSectionCollapsed },
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan)
+                        val label = if (isDeviceSectionCollapsed) {
+                            if (state.isConnected) stringResource(R.string.screen_main_device_button_change)
+                            else stringResource(R.string.screen_main_device_button_expand)
+                        } else {
+                            stringResource(R.string.screen_main_device_button_hide)
+                        }
+                        val arrow = if (isDeviceSectionCollapsed) "▼" else "▲"
+                        Text(
+                            text = "$label $arrow",
+                            color = AutoCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
 
-            if (isDeviceSectionCollapsed) {
+            AnimatedVisibility(visible = isDeviceSectionCollapsed) {
                 val selectedDevice = state.bondedDevices.find { it.address == state.selectedDeviceAddress }
-                val devName = selectedDevice?.name ?: "OBDII"
+                val customDev = state.customDevices.find { it.first.equals(state.selectedDeviceAddress, ignoreCase = true) }
+                val devDefault = stringResource(R.string.device_default_name)
+                val devName = selectedDevice?.name ?: customDev?.second ?: devDefault
                 val devAddr = selectedDevice?.address ?: state.selectedDeviceAddress ?: ""
-                Text(
-                    text = "${stringResource(R.string.screen_main_device_connected_prefix)} $devName ($devAddr)",
-                    color = AutoEmerald,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            } else {
-                AnimatedVisibility(visible = !isDeviceSectionCollapsed) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (state.isConnected) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                val prefix = if (state.isConnected) {
+                    stringResource(R.string.screen_main_device_connected_prefix)
+                } else {
+                    stringResource(R.string.screen_main_device_selected_prefix)
+                }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isDeviceSectionCollapsed = false },
+                    color = AutoSurfaceCard.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (devAddr.isNotBlank()) "$prefix $devName ($devAddr)" else stringResource(R.string.screen_main_no_paired_devices),
+                            color = if (state.isConnected) AutoEmerald else AutoTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(visible = !isDeviceSectionCollapsed) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Quick Action Buttons: Scan, Enter MAC, System BT Settings
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (state.isScanning) {
+                                        vm.stopDiscovery(ctx)
+                                    } else {
+                                        vm.startDiscovery(ctx)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (state.isScanning) AutoAmber.copy(alpha = 0.15f) else Color.Transparent
+                                )
                             ) {
-                                TextButton(onClick = { vm.refreshBondedDevices(ctx) }) {
-                                    Text(stringResource(R.string.screen_main_button_refresh), color = AutoCyan, fontSize = 12.sp)
-                                }
+                                Text(
+                                    text = if (state.isScanning) stringResource(R.string.screen_main_button_scanning) else stringResource(R.string.screen_main_button_scan),
+                                    color = if (state.isScanning) AutoAmber else AutoCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = { showManualMacDialog = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.screen_main_button_add_mac),
+                                    color = AutoCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    runCatching {
+                                        val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        }
+                                        ctx.startActivity(intent)
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.screen_main_button_bt_settings),
+                                    color = AutoTextSecondary,
+                                    fontSize = 12.sp
+                                )
                             }
                         }
 
+                        // Saved & Paired Devices Chips
                         if (state.bondedDevices.isEmpty()) {
                             Text(
                                 stringResource(R.string.screen_main_no_paired_devices),
@@ -688,29 +884,115 @@ private fun ControlsAndSettingsSection(
                                 fontSize = 13.sp
                             )
                         } else {
-                            state.bondedDevices.forEach { dev ->
-                                val selected = dev.address == state.selectedDeviceAddress
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = { vm.selectDevice(dev.address) },
-                                    label = {
-                                        Text(
-                                            "${dev.name ?: "OBD Device"} (${dev.address})",
-                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                state.bondedDevices.forEach { dev ->
+                                    val selected = dev.address == state.selectedDeviceAddress
+                                    val customDev = state.customDevices.find { it.first.equals(dev.address, ignoreCase = true) }
+                                    val devDefault = stringResource(R.string.device_default_name)
+                                    val displayName = dev.name ?: customDev?.second ?: devDefault
+                                    val isCustom = customDev != null
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        FilterChip(
+                                            selected = selected,
+                                            onClick = { vm.selectDevice(dev.address) },
+                                            label = {
+                                                Text(
+                                                    "$displayName (${dev.address})${if (isCustom) " ★" else ""}",
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = AutoCyan,
+                                                selectedLabelColor = Color.Black,
+                                                containerColor = AutoSurfaceCard,
+                                                labelColor = AutoTextPrimary
+                                            ),
+                                            modifier = Modifier.weight(1f)
                                         )
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = AutoCyan,
-                                        selectedLabelColor = Color.Black,
-                                        containerColor = AutoSurfaceCard,
-                                        labelColor = AutoTextPrimary
-                                    )
-                                )
+
+                                        if (isCustom) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            TextButton(
+                                                onClick = { vm.removeCustomDevice(ctx, dev.address) },
+                                            ) {
+                                                Text("✕", color = AutoTextSecondary, fontSize = 13.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Discovered Devices list during Bluetooth scan
+                        if (state.discoveredDevices.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = stringResource(R.string.screen_main_discovered_devices_title),
+                                color = AutoCyan,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                state.discoveredDevices.forEach { disc ->
+                                    val isAlreadySelected = disc.address == state.selectedDeviceAddress
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(AutoSurfaceCard)
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = disc.name ?: stringResource(R.string.device_unknown_name),
+                                                color = AutoTextPrimary,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                text = "${disc.address}${disc.rssi?.let { " ($it dBm)" } ?: ""}",
+                                                color = AutoTextSecondary,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            if (!disc.isBonded) {
+                                                OutlinedButton(
+                                                    onClick = { vm.pairDevice(ctx, disc.device) },
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text(stringResource(R.string.screen_main_pair_device_action), fontSize = 11.sp, color = AutoCyan)
+                                                }
+                                            }
+                                            Button(
+                                                onClick = {
+                                                    vm.addManualDevice(ctx, disc.address, disc.name)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = if (isAlreadySelected) AutoEmerald else AutoCyan),
+                                                shape = RoundedCornerShape(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isAlreadySelected) "✓" else stringResource(R.string.screen_main_device_select_action),
+                                                    color = Color.Black,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
         }
     }
 
@@ -731,7 +1013,7 @@ private fun ControlsAndSettingsSection(
                 FilterChip(
                     selected = state.cvtTempFormula == CvtTempFormula.Temp1,
                     onClick = { vm.setFormula(CvtTempFormula.Temp1) },
-                    label = { Text("Temp 1 (PIDs.csv)") },
+                    label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_1)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AutoEmerald,
                         selectedLabelColor = Color.Black
@@ -740,7 +1022,7 @@ private fun ControlsAndSettingsSection(
                 FilterChip(
                     selected = state.cvtTempFormula == CvtTempFormula.Temp2,
                     onClick = { vm.setFormula(CvtTempFormula.Temp2) },
-                    label = { Text("Temp 2 (Cubic)") },
+                    label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_2)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AutoEmerald,
                         selectedLabelColor = Color.Black
@@ -749,7 +1031,7 @@ private fun ControlsAndSettingsSection(
                 FilterChip(
                     selected = state.cvtTempFormula == CvtTempFormula.RawCount,
                     onClick = { vm.setFormula(CvtTempFormula.RawCount) },
-                    label = { Text("Raw N") },
+                    label = { Text(stringResource(R.string.screen_main_cvt_temp_chip_3)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AutoEmerald,
                         selectedLabelColor = Color.Black
@@ -767,7 +1049,7 @@ private fun ControlsAndSettingsSection(
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                "Teyes Settings & Overlay",
+                stringResource(R.string.screen_main_teyes_settings_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = AutoTextPrimary,
                 fontWeight = FontWeight.Bold
@@ -813,7 +1095,7 @@ private fun ControlsAndSettingsSection(
                     onClick = requestOverlayPermission,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = AutoAmber)
                 ) {
-                    Text("Grant Overlay Permission (SYSTEM_ALERT_WINDOW)")
+                    Text(stringResource(R.string.screen_main_grant_overlay_permission))
                 }
             }
 
@@ -1086,7 +1368,7 @@ private fun ControlsAndSettingsSection(
                             val logText = state.logEntries.joinToString("\n")
                             if (logText.isNotEmpty()) {
                                 val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("CVT Log", logText))
+                                clipboard?.setPrimaryClip(ClipData.newPlainText(ctx.getString(R.string.screen_main_journal_clipboard_label), logText))
                             }
                         },
                         enabled = state.logEntries.isNotEmpty(),

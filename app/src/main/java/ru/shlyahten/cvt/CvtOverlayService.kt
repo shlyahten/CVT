@@ -204,8 +204,8 @@ class CvtOverlayService : Service() {
                         Log.i(TAG, "Auto-selected OBDII device: ${prioritized.name} (${prioritized.address})")
                     } else {
                         withContext(Dispatchers.Main) {
-                            app.updateData(null, null, false, "No device selected")
-                            updateNotificationText("No paired device selected")
+                            app.updateData(null, null, false, getString(R.string.status_no_paired_devices))
+                            updateNotificationText(getString(R.string.status_no_paired_devices))
                         }
                         delay(3000)
                         continue
@@ -224,8 +224,8 @@ class CvtOverlayService : Service() {
                         val errMsg = connectResult.exceptionOrNull()?.message ?: "Connect failed"
                         Log.w(TAG, "Connect failed: $errMsg. Retrying in 5s...")
                         withContext(Dispatchers.Main) {
-                            app.updateData(null, null, false, "Connect error: $errMsg")
-                            updateNotificationText("Connect error: $errMsg")
+                            app.updateData(null, null, false, getString(R.string.status_connect_error, errMsg))
+                            updateNotificationText(getString(R.string.status_connect_error, errMsg))
                         }
                         delay(5000)
                         continue
@@ -266,7 +266,7 @@ class CvtOverlayService : Service() {
                     consecutiveErrors = 0
 
                     withContext(Dispatchers.Main) {
-                        app.updateData(displayTemp, n, true, "OK")
+                        app.updateData(displayTemp, n, true, getString(R.string.status_ok))
                         val unit = if (activeFormula == CvtTempFormula.RawCount) "cnt" else "°C"
                         val notifText = String.format("CVT: %.1f%s (count %d)", displayTemp, unit, n)
                         updateNotificationText(notifText)
@@ -275,15 +275,15 @@ class CvtOverlayService : Service() {
                     consecutiveErrors++
                     Log.w(TAG, "OBD query error ($consecutiveErrors): ${e.message}")
                     withContext(Dispatchers.Main) {
-                        app.updateData(null, null, true, "Read error: ${e.message}")
+                        app.updateData(null, null, true, getString(R.string.status_poll_error, e.message ?: ""))
                     }
 
                     if (consecutiveErrors >= 3) {
                         Log.w(TAG, "Too many errors, resetting connection...")
                         repo.disconnect()
                         withContext(Dispatchers.Main) {
-                            app.updateData(null, null, false, "Connection lost")
-                            updateNotificationText("Connection lost, reconnecting...")
+                            app.updateData(null, null, false, getString(R.string.status_not_connected))
+                            updateNotificationText(getString(R.string.status_connecting))
                         }
                         delay(2000)
                     }
@@ -326,7 +326,7 @@ class CvtOverlayService : Service() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    app.updateData(displayTemp, count, true, "DEMO MODE (CYCLING)")
+                    app.updateData(displayTemp, count, true, getString(R.string.screen_main_demo_status))
                     val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
                     updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, count))
                 }
@@ -371,7 +371,7 @@ class CvtOverlayService : Service() {
         }
 
         serviceScope.launch(Dispatchers.Main) {
-            app.updateData(displayTemp, bestCount, true, "DEMO MODE (PRESET)")
+            app.updateData(displayTemp, bestCount, true, getString(R.string.screen_main_demo_status))
             val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
             updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, bestCount))
         }
@@ -617,7 +617,7 @@ class CvtOverlayService : Service() {
         removeOverlayView()
         obdRepository?.close()
         obdRepository = null
-        app.updateData(null, null, false, "Stopped")
+        app.updateData(null, null, false, getString(R.string.screen_main_status_stopped))
         super.onDestroy()
     }
 }

@@ -4,82 +4,113 @@
 
     <!-- Main Screen - Top Bar -->
     <string name="screen_main_top_bar_title">CVT (ELM327)</string>
+    <string name="badge_demo_mode">DEMO MODE ACTIVE</string>
+    <string name="badge_service_running">BG SERVICE ACTIVE</string>
+    <string name="badge_stopped">STOPPED</string>
+
+    <!-- Main Screen - Dashboard & Status -->
+    <string name="screen_main_cvt_fluid_temp_header">CVT FLUID TEMPERATURE</string>
+    <string name="screen_main_zone_raw_data">RAW DATA</string>
+    <string name="screen_main_raw_count_display">Raw Count N = %d</string>
+    <string name="screen_main_button_start_monitor">START MONITOR</string>
+    <string name="screen_main_button_stop_monitor">STOP MONITOR</string>
+    <string name="screen_main_button_stop_demo">STOP DEMO</string>
 
     <!-- Main Screen - Bluetooth Permission -->
-    <string name="screen_main_permission_message">Нужно разрешение Bluetooth для доступа к спаренным устройствам.</string>
-    <string name="screen_main_permission_button">Разрешить BLUETOOTH_CONNECT</string>
+    <string name="screen_main_permission_message">Bluetooth permission is required to access paired devices.</string>
+    <string name="screen_main_permission_button">Allow BLUETOOTH_CONNECT</string>
 
     <!-- Main Screen - Device Selection -->
-    <string name="screen_main_device_title">Устройство (спаренное)</string>
-    <string name="screen_main_no_paired_devices">Нет спаренных устройств. Спарьте ELM327 в настройках Bluetooth Android.</string>
+    <string name="screen_main_device_title">OBD-II Device</string>
+    <string name="screen_main_no_paired_devices">No devices found. Run a scan or enter MAC address manually.</string>
     <string name="screen_main_button_connect">Connect</string>
     <string name="screen_main_button_connecting">Connecting…</string>
     <string name="screen_main_button_disconnect">Disconnect</string>
     <string name="screen_main_button_refresh">Refresh</string>
-    <string name="screen_main_device_connected_prefix">Подключено:</string>
-    <string name="screen_main_device_button_change">Изменить</string>
-    <string name="screen_main_device_button_hide">Свернуть</string>
+    <string name="screen_main_button_scan">Scan</string>
+    <string name="screen_main_button_scanning">Scanning…</string>
+    <string name="screen_main_button_add_mac">Enter MAC</string>
+    <string name="screen_main_button_bt_settings">BT Settings</string>
+    <string name="screen_main_device_connected_prefix">Connected:</string>
+    <string name="screen_main_device_selected_prefix">Selected:</string>
+    <string name="screen_main_device_button_change">Change</string>
+    <string name="screen_main_device_button_hide">Collapse</string>
+    <string name="screen_main_device_button_expand">Expand</string>
     <string name="screen_main_status_label">Status: %1$s</string>
+    <string name="screen_main_dialog_mac_title">Add Adapter by MAC Address</string>
+    <string name="screen_main_dialog_mac_desc">On Teyes and custom Android head units, paired adapters may not appear in standard lists. Enter your ELM327 MAC address (e.g. 00:1D:A5:68:98:8B or 11:22:33:44:55:66):</string>
+    <string name="screen_main_dialog_mac_label">MAC Address</string>
+    <string name="screen_main_dialog_mac_name_label">Device Name (Optional)</string>
+    <string name="screen_main_dialog_mac_add">Save</string>
+    <string name="screen_main_dialog_mac_cancel">Cancel</string>
+    <string name="screen_main_dialog_mac_error">Invalid MAC address format (must be AA:BB:CC:DD:EE:FF)</string>
+    <string name="screen_main_discovered_devices_title">Discovered Devices</string>
+    <string name="screen_main_pair_device_action">Pair</string>
+    <string name="screen_main_device_select_action">Select</string>
+    <string name="device_default_name">OBD Device</string>
+    <string name="device_unknown_name">Unknown Device</string>
 
     <!-- Main Screen - CVT Temperature -->
-    <string name="screen_main_cvt_temp_title">CVT температура</string>
-    <string name="screen_main_cvt_temp_chip_1">Temp 1</string>
-    <string name="screen_main_cvt_temp_chip_2">Temp 2</string>
-    <string name="screen_main_cvt_temp_chip_3">Raw Count</string>
+    <string name="screen_main_cvt_temp_title">CVT Temperature Formula</string>
+    <string name="screen_main_cvt_temp_chip_1">Temp 1 (PIDs.csv)</string>
+    <string name="screen_main_cvt_temp_chip_2">Temp 2 (Cubic)</string>
+    <string name="screen_main_cvt_temp_chip_3">Raw N</string>
     <string name="screen_main_cvt_temp_value" formatted="false">%.1f °C</string>
     <string name="screen_main_cvt_temp_raw_value" formatted="false">%d count</string>
     <string name="screen_main_cvt_temp_no_data">—</string>
 
-    <!-- Main Screen - Floating overlay -->
-    <string name="screen_main_floating_widget_title">Плавающий виджет</string>
-    <string name="screen_main_floating_widget_label">Показывать температуру CVT поверх всех окон (перетаскиваемый)</string>
+    <!-- Main Screen - Settings & Overlay -->
+    <string name="screen_main_teyes_settings_title">Teyes Settings &amp; Overlay</string>
+    <string name="screen_main_floating_widget_title">Floating Widget</string>
+    <string name="screen_main_floating_widget_label">Display CVT temperature on top of all apps (draggable)</string>
+    <string name="screen_main_grant_overlay_permission">Grant Overlay Permission (SYSTEM_ALERT_WINDOW)</string>
 
     <!-- Main Screen - Widget Demo Mode -->
-    <string name="screen_main_demo_title">Демо-режим виджета</string>
-    <string name="screen_main_demo_desc">Тестирование виджета и цветовых зон без подключения к автомобилю</string>
-    <string name="screen_main_demo_start">Запустить демо</string>
-    <string name="screen_main_demo_stop">Остановить демо</string>
-    <string name="screen_main_demo_cycle">Авто-цикл</string>
-    <string name="screen_main_demo_preset_cold">Холод (40°C)</string>
-    <string name="screen_main_demo_preset_normal">Норма (75°C)</string>
-    <string name="screen_main_demo_preset_warm">Нагрев (94°C)</string>
-    <string name="screen_main_demo_preset_hot">Перегрев (106°C)</string>
-    <string name="screen_main_demo_status">Демо-режим активен</string>
+    <string name="screen_main_demo_title">Widget Demo Mode</string>
+    <string name="screen_main_demo_desc">Test widget appearance and temperature color zones without connecting to car</string>
+    <string name="screen_main_demo_start">Start Demo</string>
+    <string name="screen_main_demo_stop">Stop Demo</string>
+    <string name="screen_main_demo_cycle">Auto Cycle</string>
+    <string name="screen_main_demo_preset_cold">Cold (40°C)</string>
+    <string name="screen_main_demo_preset_normal">Normal (75°C)</string>
+    <string name="screen_main_demo_preset_warm">Warm (94°C)</string>
+    <string name="screen_main_demo_preset_hot">Overheat (106°C)</string>
+    <string name="screen_main_demo_status">Demo mode active</string>
 
     <!-- Main Screen - Autostart & Background -->
-    <string name="screen_main_autostart_title">Автозапуск на ГУ</string>
-    <string name="screen_main_autostart_label">Запускать мониторинг при включении зажигания / ГУ Teyes</string>
-    <string name="screen_main_autoconnect_title">Автоподключение</string>
-    <string name="screen_main_autoconnect_label">Автоматически подключаться к последнему адаптеру</string>
-    <string name="screen_main_status_running">Сервис мониторинга активен в фоне</string>
-    <string name="screen_main_status_stopped">Сервис остановлен</string>
-    <string name="screen_main_temp_zone_cold">Прогрев (&lt;50°C)</string>
-    <string name="screen_main_temp_zone_normal">Рабочая норма (50–89°C)</string>
-    <string name="screen_main_temp_zone_warm">Повышенная (90–99°C)</string>
-    <string name="screen_main_temp_zone_hot">ПЕРЕГРЕВ (≥100°C)</string>
+    <string name="screen_main_autostart_title">Autostart on Head Unit</string>
+    <string name="screen_main_autostart_label">Start monitoring automatically when ignition or Teyes head unit turns on</string>
+    <string name="screen_main_autoconnect_title">Auto-connect</string>
+    <string name="screen_main_autoconnect_label">Automatically connect to the last selected adapter</string>
+    <string name="screen_main_status_running">Monitoring service is running in background</string>
+    <string name="screen_main_status_stopped">Service stopped</string>
+    <string name="screen_main_temp_zone_cold">Warm-up (&lt;50°C)</string>
+    <string name="screen_main_temp_zone_normal">Normal (50–89°C)</string>
+    <string name="screen_main_temp_zone_warm">Elevated (90–99°C)</string>
+    <string name="screen_main_temp_zone_hot">OVERHEAT (≥100°C)</string>
 
     <!-- Overlay widget -->
     <string name="overlay_cvt_temp1_placeholder">CVT Temp1: —</string>
     <string name="overlay_cvt_temp1_no_data">CVT Temp1: —</string>
     <string name="overlay_cvt_temp1_value">CVT Temp1: %1$.1f °C</string>
-    <string name="overlay_notification_channel_name">CVT overlay</string>
+    <string name="overlay_notification_channel_name">CVT Monitoring</string>
     <string name="overlay_notification_title">CVT Temp1</string>
-    <string name="overlay_notification_text">Плавающий виджет активен</string>
+    <string name="overlay_notification_text">Floating widget active</string>
 
     <!-- Main Screen - Oil Degradation -->
-    <string name="screen_main_oil_title">CVT oil degradation (2110)</string>
-    <string name="screen_main_oil_button_read">Read once</string>
+    <string name="screen_main_oil_title">CVT Oil Degradation (PID 2110)</string>
+    <string name="screen_main_oil_button_read">Read Once</string>
     <string name="screen_main_oil_no_data">—</string>
-    <string name="screen_main_oil_weekly_subtitle">Прирост за 7 дней:</string>
+    <string name="screen_main_oil_weekly_subtitle">7-day increase:</string>
 
     <!-- Main Screen - Last Raw Response -->
-    <string name="screen_main_raw_title">Последний RAW ответ</string>
+    <string name="screen_main_raw_title">Last Raw Response</string>
 
     <!-- Main Screen - Journal/Log -->
-    <string name="screen_main_journal_title">Журнал</string>
+    <string name="screen_main_journal_title">Journal</string>
     <string name="screen_main_journal_button_copy">Copy</string>
     <string name="screen_main_journal_button_clear">Clear</string>
-    <string name="screen_main_journal_clipboard_label">Journal</string>
+    <string name="screen_main_journal_clipboard_label">CVT Journal</string>
 
     <!-- Status Messages (used in UiState) -->
     <string name="status_idle">Idle</string>
@@ -116,24 +147,24 @@
     <string name="log_cleared_by_user">Log cleared by user</string>
 
     <!-- Onboarding / Permissions Screen -->
-    <string name="permissions_title">Настройка разрешений</string>
-    <string name="permissions_subtitle">Для мониторинга температуры вариатора CVT и стабильной работы на ГУ Teyes приложению требуются разрешения</string>
-    <string name="permissions_status_granted">Предоставлено</string>
-    <string name="permissions_status_required">Требуется</string>
-    <string name="permissions_status_optional">Опционально</string>
-    <string name="permissions_bt_title">Доступ к Bluetooth</string>
-    <string name="permissions_bt_desc">Необходимо для подключения к адаптеру ELM327 OBD-II и получения данных вариатора.</string>
-    <string name="permissions_bt_btn">Разрешить доступ к Bluetooth</string>
-    <string name="permissions_notif_title">Фоновые уведомления</string>
-    <string name="permissions_notif_desc">Необходимо для работы фоновой службы мониторинга без принудительного закрытия системой Android.</string>
-    <string name="permissions_notif_btn">Разрешить уведомления</string>
-    <string name="permissions_overlay_title">Плавающий виджет поверх всех окон</string>
-    <string name="permissions_overlay_desc">Позволяет выводить температуру вариатора поверх Яндекс Навигатора и других приложений.</string>
-    <string name="permissions_overlay_btn">Настроить поверх окон</string>
-    <string name="permissions_grant_all_btn">Запросить разрешения</string>
-    <string name="permissions_continue_btn">Перейти к монитору</string>
-    <string name="permissions_bt_required_warning">Для работы приложения требуется разрешение на доступ к Bluetooth</string>
-    <string name="permissions_topbar_button">Разрешения</string>
+    <string name="permissions_title">Permission Setup</string>
+    <string name="permissions_subtitle">To monitor CVT fluid temperature and ensure stable operation on Teyes head units, the app requires permissions</string>
+    <string name="permissions_status_granted">Granted</string>
+    <string name="permissions_status_required">Required</string>
+    <string name="permissions_status_optional">Optional</string>
+    <string name="permissions_bt_title">Bluetooth Access</string>
+    <string name="permissions_bt_desc">Required to connect to the ELM327 OBD-II adapter and receive CVT transmission data.</string>
+    <string name="permissions_bt_btn">Grant Bluetooth Permission</string>
+    <string name="permissions_notif_title">Background Notifications</string>
+    <string name="permissions_notif_desc">Required for background monitoring service to prevent being killed by the Android system.</string>
+    <string name="permissions_notif_btn">Grant Notification Permission</string>
+    <string name="permissions_overlay_title">Floating Widget Over Other Apps</string>
+    <string name="permissions_overlay_desc">Allows displaying CVT temperature on top of navigation and other apps.</string>
+    <string name="permissions_overlay_btn">Configure Overlay</string>
+    <string name="permissions_grant_all_btn">Request Permissions</string>
+    <string name="permissions_continue_btn">Continue to Monitor</string>
+    <string name="permissions_bt_required_warning">Bluetooth permission is required for the app to function</string>
+    <string name="permissions_topbar_button">Permissions</string>
 
     <!-- GitHub Link -->
     <string name="screen_main_github_link">GitHub: https://github.com/shlyahten/CVT/</string>
