@@ -609,15 +609,20 @@ class CvtOverlayService : Service() {
     }
 
     private fun buildForegroundNotification(statusText: String): Notification {
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            setPackage(packageName)
+        }
         val openApp = PendingIntent.getActivity(
             this,
             0,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val stopIntent = Intent(this, CvtOverlayService::class.java).apply {
             action = ACTION_STOP
+            setPackage(packageName)
         }
         val stopPendingIntent = PendingIntent.getService(
             this,
