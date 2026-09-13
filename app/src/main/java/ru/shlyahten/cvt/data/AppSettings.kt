@@ -15,6 +15,9 @@ class AppSettings(context: Context) {
     private val _autostartFlow = MutableStateFlow(isAutostartEnabled())
     val autostartFlow: StateFlow<Boolean> = _autostartFlow.asStateFlow()
 
+    private val _autoEnableBluetoothFlow = MutableStateFlow(isAutoEnableBluetoothEnabled())
+    val autoEnableBluetoothFlow: StateFlow<Boolean> = _autoEnableBluetoothFlow.asStateFlow()
+
     private val _overlayFlow = MutableStateFlow(isOverlayEnabled())
     val overlayFlow: StateFlow<Boolean> = _overlayFlow.asStateFlow()
 
@@ -88,6 +91,14 @@ class AppSettings(context: Context) {
         prefs.edit().putBoolean(KEY_AUTOCONNECT, enabled).apply()
     }
 
+    fun isAutoEnableBluetoothEnabled(): Boolean =
+        prefs.getBoolean(KEY_AUTO_ENABLE_BLUETOOTH, true)
+
+    fun setAutoEnableBluetoothEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_ENABLE_BLUETOOTH, enabled).apply()
+        _autoEnableBluetoothFlow.value = enabled
+    }
+
     fun isOverlayEnabled(): Boolean =
         prefs.getBoolean(KEY_OVERLAY_ENABLED, true)
 
@@ -159,6 +170,7 @@ class AppSettings(context: Context) {
         private const val KEY_DEVICE_NAME = "pref_device_name"
         private const val KEY_AUTOSTART = "pref_autostart"
         private const val KEY_AUTOCONNECT = "pref_autoconnect"
+        private const val KEY_AUTO_ENABLE_BLUETOOTH = "pref_auto_enable_bluetooth"
         private const val KEY_OVERLAY_ENABLED = "pref_overlay_enabled"
         private const val KEY_FORMULA = "pref_formula"
         private const val KEY_OVERLAY_X = "pref_overlay_x"

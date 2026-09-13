@@ -52,6 +52,9 @@ data class UiState(
     val floatingOverlayDesired: Boolean = true,
     val autostartDesired: Boolean = false,
     val autoconnectDesired: Boolean = true,
+    val autoEnableBluetoothDesired: Boolean = true,
+    val isBluetoothEnabled: Boolean = true,
+    val isBluetoothEnabling: Boolean = false,
     val isDemoMode: Boolean = false,
     val demoCycleActive: Boolean = true,
     val demoPresetTemp: Double? = null,
@@ -95,6 +98,11 @@ class MainViewModel : ViewModel() {
         val savedOverlay = s.isOverlayEnabled()
         val savedAutostart = s.isAutostartEnabled()
         val savedAutoconnect = s.isAutoconnectEnabled()
+        val savedAutoEnableBt = s.isAutoEnableBluetoothEnabled()
+
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        val isBtEnabled = adapter?.isEnabled == true
 
         _state.update {
             it.copy(
@@ -103,10 +111,14 @@ class MainViewModel : ViewModel() {
                 floatingOverlayDesired = savedOverlay,
                 autostartDesired = savedAutostart,
                 autoconnectDesired = savedAutoconnect,
+                autoEnableBluetoothDesired = savedAutoEnableBt,
+                isBluetoothEnabled = isBtEnabled,
                 oilDegradation = app.oilDegradation.value,
                 oilDegradationWeeklyDiff = app.oilDegradationWeeklyDiff.value,
             )
         }
+
+        registerBluetoothStateReceiver(context)
 
         val hasBtPermission = if (Build.VERSION.SDK_INT >= 31) {
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
@@ -115,7 +127,9 @@ class MainViewModel : ViewModel() {
         }
         _state.update { it.copy(hasConnectPermission = hasBtPermission) }
 
-        if (hasBtPermission) {
+        if (!isBtEnabled && savedAutoEnableBt) {
+            enableBluetooth(context)
+        } else if (hasBtPermission) {
             refreshBondedDevices(context)
         }
 
@@ -190,6 +204,49 @@ class MainViewModel : ViewModel() {
     }
 
     private var scanReceiver: BroadcastReceiver? = null
+    private var bluetoothStateReceiver: BroadcastReceiver? = null
+
+    private fun registerBluetoothStateReceiver(context: Context) {
+        if (bluetoothStateReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+                    val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                    when (state) {
+                        BluetoothAdapter.STATE_TURNING_ON -> {
+                            _state.update { it.copy(isBluetoothEnabling = true) }
+                        }
+                        BluetoothAdapter.STATE_ON -> {
+                            _state.update { it.copy(isBluetoothEnabled = true, isBluetoothEnabling = false) }
+                            c?.let {
+                                addLogEntry(it.getString(R.string.log_bluetooth_enabled))
+                                refreshBondedDevices(it)
+                            }
+                        }
+                        BluetoothAdapter.STATE_TURNING_OFF -> {
+                            _state.update { it.copy(isBluetoothEnabling = false) }
+                        }
+                        BluetoothAdapter.STATE_OFF -> {
+                            _state.update { it.copy(isBluetoothEnabled = false, isBluetoothEnabling = false) }
+                            c?.let { ctx ->
+                                addLogEntry(ctx.getString(R.string.log_bluetooth_disabled))
+                                if (settings?.isAutoEnableBluetoothEnabled() == true) {
+                                    enableBluetooth(ctx)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        bluetoothStateReceiver = receiver
+        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        if (Build.VERSION.SDK_INT >= 33) {
+            context.applicationContext.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            context.applicationContext.registerReceiver(receiver, filter)
+        }
+    }
 
     fun refreshBondedDevices(context: Context? = null) {
         val hasBtPermission = if (Build.VERSION.SDK_INT >= 31) {
@@ -214,6 +271,22 @@ class MainViewModel : ViewModel() {
 
         val bluetoothManager = context?.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+
+        val isBtEnabled = adapter?.isEnabled == true
+        _state.update { it.copy(isBluetoothEnabled = isBtEnabled) }
+
+        if (adapter != null && !isBtEnabled) {
+            if (settings?.isAutoEnableBluetoothEnabled() == true && context != null) {
+                enableBluetooth(context)
+            }
+            _state.update { s ->
+                s.copy(
+                    status = context?.getString(R.string.status_bluetooth_disabled) ?: "Bluetooth 2 is turned off"
+                )
+            }
+            return
+        }
+
         val systemDevices = try {
             adapter?.bondedDevices?.toList().orEmpty()
         } catch (e: SecurityException) {
@@ -309,6 +382,9 @@ class MainViewModel : ViewModel() {
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
         if (adapter == null || !adapter.isEnabled) {
             addLogEntry("Cannot scan: Bluetooth adapter is disabled or null")
+            if (adapter != null && !adapter.isEnabled) {
+                enableBluetooth(context)
+            }
             return
         }
 
@@ -418,6 +494,50 @@ class MainViewModel : ViewModel() {
             }
             scanReceiver = null
         }
+        bluetoothStateReceiver?.let {
+            cvtApp?.let { app ->
+                runCatching { app.unregisterReceiver(it) }
+            }
+            bluetoothStateReceiver = null
+        }
+    }
+
+    fun enableBluetooth(context: Context, onRequestEnableIntent: (() -> Unit)? = null): Boolean {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        if (adapter == null) {
+            addLogEntry("Bluetooth adapter is null")
+            return false
+        }
+        if (adapter.isEnabled) {
+            _state.update { it.copy(isBluetoothEnabled = true, isBluetoothEnabling = false) }
+            return true
+        }
+
+        _state.update { it.copy(isBluetoothEnabling = true) }
+        addLogEntry(context.getString(R.string.log_auto_enabling_bluetooth))
+
+        val directSuccess = try {
+            @Suppress("DEPRECATION")
+            adapter.enable()
+        } catch (e: SecurityException) {
+            addLogEntry("Bluetooth enable SecurityException: ${e.message}")
+            false
+        } catch (e: Exception) {
+            addLogEntry("Bluetooth enable error: ${e.message}")
+            false
+        }
+
+        if (!directSuccess && onRequestEnableIntent != null) {
+            onRequestEnableIntent()
+        }
+        return directSuccess
+    }
+
+    fun setAutoEnableBluetoothDesired(enabled: Boolean) {
+        settings?.setAutoEnableBluetoothEnabled(enabled)
+        _state.update { it.copy(autoEnableBluetoothDesired = enabled) }
+        addLogEntry("Auto-enable Bluetooth 2 ${if (enabled) "enabled" else "disabled"}")
     }
 
     fun setHasConnectPermission(granted: Boolean) {

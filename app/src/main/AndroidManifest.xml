@@ -68,6 +68,8 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.ts.headunit.power.on" />
+                <action android:name="com.glsx.boot.ACCON" />
+                <action android:name="com.fyt.boot.ACCON" />
             </intent-filter>
         </receiver>
     </application>

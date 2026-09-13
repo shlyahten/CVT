@@ -191,6 +191,36 @@ class CvtOverlayService : Service() {
             var consecutiveErrors = 0
 
             while (isActive) {
+                // Ensure Bluetooth (Bluetooth 2) is enabled on Teyes / Android
+                val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+                if (adapter != null && !adapter.isEnabled) {
+                    if (settings.isAutoEnableBluetoothEnabled()) {
+                        Log.i(TAG, "Bluetooth (Bluetooth 2) is disabled. Auto-activating...")
+                        withContext(Dispatchers.Main) {
+                            app.updateData(null, null, false, getString(R.string.status_enabling_bluetooth))
+                            updateNotificationText(getString(R.string.status_enabling_bluetooth))
+                        }
+                        runCatching {
+                            @Suppress("DEPRECATION")
+                            adapter.enable()
+                        }
+                        val startTime = System.currentTimeMillis()
+                        while (isActive && !adapter.isEnabled && System.currentTimeMillis() - startTime < 10000L) {
+                            delay(300)
+                        }
+                    }
+                    if (!adapter.isEnabled) {
+                        Log.w(TAG, "Bluetooth is still disabled. Waiting 3s before retry...")
+                        withContext(Dispatchers.Main) {
+                            app.updateData(null, null, false, getString(R.string.status_bluetooth_disabled))
+                            updateNotificationText(getString(R.string.status_bluetooth_disabled))
+                        }
+                        delay(3000)
+                        continue
+                    }
+                }
+
                 var targetAddress = settings.getSelectedDeviceAddress()
                 if (targetAddress.isNullOrBlank()) {
                     val bonded = repo.getBondedDevices()

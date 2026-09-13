@@ -19,6 +19,10 @@
     <!-- Main Screen - Bluetooth Permission -->
     <string name="screen_main_permission_message">Нужно разрешение Bluetooth для доступа к спаренным устройствам.</string>
     <string name="screen_main_permission_button">Разрешить BLUETOOTH_CONNECT</string>
+    <string name="screen_main_bt_disabled_title">Bluetooth выключен (Bluetooth 2)</string>
+    <string name="screen_main_bt_disabled_desc">Система отключила модуль Bluetooth 2. Включите его для загрузки списка спаренных OBD-адаптеров.</string>
+    <string name="screen_main_button_enable_bt">Включить Bluetooth</string>
+    <string name="screen_main_button_enabling_bt">Включение…</string>
 
     <!-- Main Screen - Device Selection -->
     <string name="screen_main_device_title">Устройство OBD-II</string>
@@ -82,6 +86,8 @@
     <string name="screen_main_autostart_label">Запускать мониторинг при включении зажигания / ГУ Teyes</string>
     <string name="screen_main_autoconnect_title">Автоподключение</string>
     <string name="screen_main_autoconnect_label">Автоматически подключаться к последнему адаптеру</string>
+    <string name="screen_main_auto_enable_bt_title">Авто-включение Bluetooth 2</string>
+    <string name="screen_main_auto_enable_bt_label">Автоматически активировать Bluetooth (Bluetooth 2) при запуске и выходе из сна</string>
     <string name="screen_main_status_running">Сервис мониторинга активен в фоне</string>
     <string name="screen_main_status_stopped">Сервис остановлен</string>
     <string name="screen_main_temp_zone_cold">Прогрев (&lt;50°C)</string>
@@ -116,6 +122,8 @@
     <string name="status_idle">Ожидание</string>
     <string name="status_no_paired_devices">Нет спаренных устройств</string>
     <string name="status_missing_bluetooth_permission">Отсутствует разрешение на Bluetooth</string>
+    <string name="status_enabling_bluetooth">Включение Bluetooth (Bluetooth 2)…</string>
+    <string name="status_bluetooth_disabled">Bluetooth 2 выключен</string>
     <string name="status_connecting">Подключение…</string>
     <string name="status_connected">Подключено</string>
     <string name="status_connect_error">Ошибка подключения: %1$s</string>
@@ -131,6 +139,9 @@
     <string name="log_found_bonded_devices">Найдено устройств: %1$d</string>
     <string name="log_bluetooth_permission_granted">Разрешение Bluetooth предоставлено</string>
     <string name="log_missing_bluetooth_permission">Отсутствует разрешение BLUETOOTH_CONNECT</string>
+    <string name="log_bluetooth_enabled">Bluetooth (Bluetooth 2) включен</string>
+    <string name="log_bluetooth_disabled">Bluetooth (Bluetooth 2) отключен системой</string>
+    <string name="log_auto_enabling_bluetooth">Автоматическая активация Bluetooth (Bluetooth 2)…</string>
     <string name="log_connecting_to_device">Подключение к %1$s…</string>
     <string name="log_opening_bluetooth_connection">Открытие Bluetooth-соединения…</string>
     <string name="log_elm_initialized">ELM327 успешно инициализирован</string>

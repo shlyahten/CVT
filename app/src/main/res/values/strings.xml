@@ -19,6 +19,10 @@
     <!-- Main Screen - Bluetooth Permission -->
     <string name="screen_main_permission_message">Bluetooth permission is required to access paired devices.</string>
     <string name="screen_main_permission_button">Allow BLUETOOTH_CONNECT</string>
+    <string name="screen_main_bt_disabled_title">Bluetooth Disabled (Bluetooth 2)</string>
+    <string name="screen_main_bt_disabled_desc">The system has turned off Bluetooth 2. Turn it on to load paired OBD-II adapters.</string>
+    <string name="screen_main_button_enable_bt">Turn on Bluetooth</string>
+    <string name="screen_main_button_enabling_bt">Turning on…</string>
 
     <!-- Main Screen - Device Selection -->
     <string name="screen_main_device_title">OBD-II Device</string>
@@ -82,6 +86,8 @@
     <string name="screen_main_autostart_label">Start monitoring automatically when ignition or Teyes head unit turns on</string>
     <string name="screen_main_autoconnect_title">Auto-connect</string>
     <string name="screen_main_autoconnect_label">Automatically connect to the last selected adapter</string>
+    <string name="screen_main_auto_enable_bt_title">Auto-enable Bluetooth 2</string>
+    <string name="screen_main_auto_enable_bt_label">Automatically activate Bluetooth (Bluetooth 2) when app starts or head unit wakes</string>
     <string name="screen_main_status_running">Monitoring service is running in background</string>
     <string name="screen_main_status_stopped">Service stopped</string>
     <string name="screen_main_temp_zone_cold">Warm-up (&lt;50°C)</string>
@@ -116,6 +122,8 @@
     <string name="status_idle">Idle</string>
     <string name="status_no_paired_devices">No paired devices</string>
     <string name="status_missing_bluetooth_permission">Missing BLUETOOTH_CONNECT permission</string>
+    <string name="status_enabling_bluetooth">Enabling Bluetooth (Bluetooth 2)…</string>
+    <string name="status_bluetooth_disabled">Bluetooth 2 is turned off</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_connected">Connected</string>
     <string name="status_connect_error">Connect error: %1$s</string>
@@ -131,6 +139,9 @@
     <string name="log_found_bonded_devices">Found %1$d bonded devices</string>
     <string name="log_bluetooth_permission_granted">Bluetooth permission granted</string>
     <string name="log_missing_bluetooth_permission">Missing BLUETOOTH_CONNECT permission</string>
+    <string name="log_bluetooth_enabled">Bluetooth (Bluetooth 2) activated</string>
+    <string name="log_bluetooth_disabled">Bluetooth (Bluetooth 2) disabled by system</string>
+    <string name="log_auto_enabling_bluetooth">Auto-activating Bluetooth (Bluetooth 2)…</string>
     <string name="log_connecting_to_device">Connecting to %1$s…</string>
     <string name="log_opening_bluetooth_connection">Opening Bluetooth connection…</string>
     <string name="log_elm_initialized">ELM327 initialized successfully</string>

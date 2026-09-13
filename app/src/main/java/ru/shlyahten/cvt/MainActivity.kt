@@ -1,6 +1,8 @@
 package ru.shlyahten.cvt
 
 import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -126,6 +128,22 @@ class MainActivity : ComponentActivity() {
             if (btGranted) vm.refreshBondedDevices(this)
         }
 
+    private val enableBluetoothLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                vm.refreshBondedDevices(this)
+            }
+        }
+
+    private fun requestEnableBluetooth() {
+        vm.enableBluetooth(this) {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            runCatching {
+                enableBluetoothLauncher.launch(enableBtIntent)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = AppSettings.getInstance(this)
@@ -164,6 +182,7 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         modifier = Modifier.fillMaxSize(),
                         requestBtPermission = ::requestBluetooth,
+                        requestEnableBluetooth = ::requestEnableBluetooth,
                         requestOverlayPermission = ::requestOverlay,
                         onOpenPermissions = { showPermissionsScreen.value = true },
                         vm = vm
@@ -177,7 +196,13 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         updatePermissionsState()
         if (permissionsState.value.bluetoothGranted) {
-            vm.refreshBondedDevices(this)
+            val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+            if (adapter?.isEnabled == false && settings.isAutoEnableBluetoothEnabled()) {
+                requestEnableBluetooth()
+            } else {
+                vm.refreshBondedDevices(this)
+            }
         }
     }
 
@@ -269,6 +294,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     modifier: Modifier = Modifier,
     requestBtPermission: () -> Unit = {},
+    requestEnableBluetooth: () -> Unit = {},
     requestOverlayPermission: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
     vm: MainViewModel = viewModel(),
@@ -371,6 +397,7 @@ fun MainScreen(
                             state = state,
                             vm = vm,
                             requestBtPermission = requestBtPermission,
+                            requestEnableBluetooth = requestEnableBluetooth,
                             requestOverlayPermission = requestOverlayPermission
                         )
                     }
@@ -393,6 +420,7 @@ fun MainScreen(
                         state = state,
                         vm = vm,
                         requestBtPermission = requestBtPermission,
+                        requestEnableBluetooth = requestEnableBluetooth,
                         requestOverlayPermission = requestOverlayPermission
                     )
                 }
@@ -591,6 +619,7 @@ private fun ControlsAndSettingsSection(
     state: ru.shlyahten.cvt.ui.UiState,
     vm: MainViewModel,
     requestBtPermission: () -> Unit,
+    requestEnableBluetooth: () -> Unit,
     requestOverlayPermission: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -599,6 +628,55 @@ private fun ControlsAndSettingsSection(
     LaunchedEffect(state.isConnected) {
         if (state.isConnected) {
             isDeviceSectionCollapsed = true
+        }
+    }
+
+    // Bluetooth disabled card if Bluetooth 2 is turned off
+    if (!state.isBluetoothEnabled) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = AutoSurfaceCard),
+            shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, AutoRed)
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(AutoRed)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.screen_main_bt_disabled_title),
+                        fontWeight = FontWeight.Bold,
+                        color = AutoRed,
+                        fontSize = 14.sp
+                    )
+                }
+                Text(
+                    stringResource(R.string.screen_main_bt_disabled_desc),
+                    color = AutoTextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+                Button(
+                    onClick = requestEnableBluetooth,
+                    colors = ButtonDefaults.buttonColors(containerColor = AutoCyan),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (state.isBluetoothEnabling) {
+                            stringResource(R.string.screen_main_button_enabling_bt)
+                        } else {
+                            stringResource(R.string.screen_main_button_enable_bt)
+                        },
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
         }
     }
 
@@ -1151,6 +1229,34 @@ private fun ControlsAndSettingsSection(
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = AutoEmerald,
                         checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Auto-enable Bluetooth Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_auto_enable_bt_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_auto_enable_bt_label),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.autoEnableBluetoothDesired,
+                    onCheckedChange = { vm.setAutoEnableBluetoothDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
                     )
                 )
             }

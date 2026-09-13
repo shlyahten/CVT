@@ -47,12 +47,15 @@ While fully compatible with Android smartphones and tablets, the application is 
 ### 🚗 Designed for Automotive Android Head Units (Teyes, Kingbeats, etc.)
 - **Persistent Background Service**: `CvtOverlayService` runs as an official Android Foreground Service (`connectedDevice` type), preventing background termination by aggressive OEM task managers.
 - **Automatic Connection**: Seamlessly connects to your last-used OBD adapter on service start.
-- **Ignition & Boot Autostart (`BootReceiver`)**: Listens to system broadcasts for cold boots, fast wakeups, and head unit power-on events:
+- **Ignition & Boot Autostart (`BootReceiver`)**: Listens to system broadcasts for cold boots, fast wakeups, and ACC key turn events:
+  - `com.glsx.boot.ACCON` *(Teyes GLSX launcher ACC ON broadcast)*
+  - `com.fyt.boot.ACCON` *(FYT platform ACC ON broadcast)*
   - `android.intent.action.BOOT_COMPLETED`
   - `android.intent.action.LOCKED_BOOT_COMPLETED`
   - `android.intent.action.QUICKBOOT_POWERON`
   - `com.htc.intent.action.QUICKBOOT_POWERON`
   - `com.ts.headunit.power.on` *(proprietary Teyes wake intent)*
+- **Automatic Bluetooth (Bluetooth 2) Activation**: Teyes head units frequently disable the secondary Android Bluetooth adapter ("Bluetooth 2" in settings) during standby or sleep, causing an empty device list. The app automatically detects this, activates Bluetooth 2 on launch, wake, and in the background service, and immediately repopulates the device list.
 - **Adaptive Responsive Layout**: Automatically switches to an ergonomic two-column landscape view on widescreen displays (≥ 600dp) and a sleek single-column layout on portrait phones.
 
 ### 🧪 Widget Demo Mode
@@ -65,6 +68,7 @@ While fully compatible with Android smartphones and tablets, the application is 
 - **Weekly Delta Analysis**: Tracks degradation history and calculates the rolling 7-day point increase (`+N points`), highlighting high degradation rates in amber or green.
 
 ### 📡 Advanced Bluetooth Management
+- **Auto-Activation of Bluetooth 2**: Eliminates empty device lists by automatically powering on Bluetooth 2 when the app opens or the car wakes into ACC mode.
 - **Device Prioritizer**: Automatically highlights and prioritizes OBD-II adapters (`OBDII`, `OBD2`, etc.) over audio devices and phones.
 - **In-App Bluetooth Discovery**: Scan and pair nearby devices without leaving the application.
 - **Manual MAC Address Input**: Solve the notorious Teyes issue where custom Bluetooth stacks hide paired OBD adapters from standard Android system APIs by manually entering the adapter's MAC address (e.g. `00:1D:A5:68:98:8B`).
@@ -296,8 +300,8 @@ Run automated test suites and linters directly from the command line:
 
 | Problem | Cause | Solution |
 |:---|:---|:---|
-| **No devices shown in list** | Adapter is not paired in Android Bluetooth settings. | Open system Bluetooth settings, scan, and pair the adapter with PIN `1234` or `0000`. |
-| **Adapter not in list on Teyes head unit** | Teyes firmware isolates the Bluetooth phone stack from standard Android Bluetooth APIs. | Click **"Enter MAC"** in the app and type the adapter's MAC address manually. |
+| **No devices shown in list** | Bluetooth (Bluetooth 2) is disabled by Teyes power management, or adapter is not paired. | The app auto-enables Bluetooth 2, or tap **"Turn on Bluetooth"** on the banner. Ensure adapter is paired in system settings. |
+| **Adapter not in list on Teyes head unit** | Teyes firmware isolates the Bluetooth phone stack, or adapter is asleep. | Tap **"Turn on Bluetooth"** if disabled, or click **"Enter MAC"** to input the adapter's MAC address directly. |
 | **Floating widget does not appear** | Missing `SYSTEM_ALERT_WINDOW` permission. | Open Android Settings → Apps → Special app access → **Display over other apps** → Enable for **CVT**. |
 | **Service stops when screen turns off** | OS battery optimization kills the process. | Disable battery optimization for the app (Settings → Battery → Unrestricted). |
 | **Connection Error / Timeout** | Another app is holding the adapter connection (e.g. Torque, Car Scanner, CVTz50). | Close other OBD apps and turn the car ignition off and on. |
