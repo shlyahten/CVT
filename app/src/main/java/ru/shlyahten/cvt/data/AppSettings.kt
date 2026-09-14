@@ -21,6 +21,12 @@ class AppSettings(context: Context) {
     private val _overlayFlow = MutableStateFlow(isOverlayEnabled())
     val overlayFlow: StateFlow<Boolean> = _overlayFlow.asStateFlow()
 
+    private val _overlayScaleFlow = MutableStateFlow(getOverlayScale())
+    val overlayScaleFlow: StateFlow<Float> = _overlayScaleFlow.asStateFlow()
+
+    private val _overlayTransparencyFlow = MutableStateFlow(getOverlayTransparency())
+    val overlayTransparencyFlow: StateFlow<Int> = _overlayTransparencyFlow.asStateFlow()
+
     private val _formulaFlow = MutableStateFlow(getFormula())
     val formulaFlow: StateFlow<CvtTempFormula> = _formulaFlow.asStateFlow()
 
@@ -125,6 +131,22 @@ class AppSettings(context: Context) {
         prefs.edit().putInt(KEY_OVERLAY_X, x).putInt(KEY_OVERLAY_Y, y).apply()
     }
 
+    fun getOverlayScale(): Float = prefs.getFloat(KEY_OVERLAY_SCALE, 1.0f)
+
+    fun setOverlayScale(scale: Float) {
+        val clamped = scale.coerceIn(0.5f, 2.0f)
+        prefs.edit().putFloat(KEY_OVERLAY_SCALE, clamped).apply()
+        _overlayScaleFlow.value = clamped
+    }
+
+    fun getOverlayTransparency(): Int = prefs.getInt(KEY_OVERLAY_TRANSPARENCY, 0)
+
+    fun setOverlayTransparency(percent: Int) {
+        val clamped = percent.coerceIn(0, 100)
+        prefs.edit().putInt(KEY_OVERLAY_TRANSPARENCY, clamped).apply()
+        _overlayTransparencyFlow.value = clamped
+    }
+
     fun getPollIntervalMs(): Long = prefs.getLong(KEY_POLL_INTERVAL_MS, 1000L)
 
     fun setPollIntervalMs(ms: Long) {
@@ -175,6 +197,8 @@ class AppSettings(context: Context) {
         private const val KEY_FORMULA = "pref_formula"
         private const val KEY_OVERLAY_X = "pref_overlay_x"
         private const val KEY_OVERLAY_Y = "pref_overlay_y"
+        private const val KEY_OVERLAY_SCALE = "pref_overlay_scale"
+        private const val KEY_OVERLAY_TRANSPARENCY = "pref_overlay_transparency"
         private const val KEY_POLL_INTERVAL_MS = "pref_poll_interval_ms"
         private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
         private const val KEY_LAST_OIL_DEGRADATION = "pref_last_oil_degradation"

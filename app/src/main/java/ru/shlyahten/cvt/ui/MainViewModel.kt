@@ -58,6 +58,12 @@ data class UiState(
     val isDemoMode: Boolean = false,
     val demoCycleActive: Boolean = true,
     val demoPresetTemp: Double? = null,
+    val overlayScale: Float = 1.0f,
+    val overlayTransparency: Int = 0,
+    val connectionLatencyMs: Long? = null,
+    val errorCount: Int = 0,
+    val lastError: String? = null,
+    val btStatus: ru.shlyahten.cvt.BtStatus = ru.shlyahten.cvt.BtStatus.DISCONNECTED,
 )
 
 enum class CvtTempFormula { Temp1, Temp2, RawCount }
@@ -99,6 +105,8 @@ class MainViewModel : ViewModel() {
         val savedAutostart = s.isAutostartEnabled()
         val savedAutoconnect = s.isAutoconnectEnabled()
         val savedAutoEnableBt = s.isAutoEnableBluetoothEnabled()
+        val savedScale = s.getOverlayScale()
+        val savedTransparency = s.getOverlayTransparency()
 
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
@@ -109,12 +117,18 @@ class MainViewModel : ViewModel() {
                 selectedDeviceAddress = savedAddress,
                 cvtTempFormula = savedFormula,
                 floatingOverlayDesired = savedOverlay,
+                overlayScale = savedScale,
+                overlayTransparency = savedTransparency,
                 autostartDesired = savedAutostart,
                 autoconnectDesired = savedAutoconnect,
                 autoEnableBluetoothDesired = savedAutoEnableBt,
                 isBluetoothEnabled = isBtEnabled,
                 oilDegradation = app.oilDegradation.value,
                 oilDegradationWeeklyDiff = app.oilDegradationWeeklyDiff.value,
+                connectionLatencyMs = app.connectionLatencyMs.value,
+                errorCount = app.errorCount.value,
+                lastError = app.lastError.value,
+                btStatus = app.btStatus.value,
             )
         }
 
@@ -197,6 +211,48 @@ class MainViewModel : ViewModel() {
                 if (demo) {
                     addLogEntry("Demo mode active")
                 }
+            }
+        }
+
+        // Observe Bluetooth connection status
+        viewModelScope.launch {
+            app.btStatus.collectLatest { btStat ->
+                _state.update { it.copy(btStatus = btStat) }
+            }
+        }
+
+        // Observe connection latency
+        viewModelScope.launch {
+            app.connectionLatencyMs.collectLatest { latency ->
+                _state.update { it.copy(connectionLatencyMs = latency) }
+            }
+        }
+
+        // Observe error count
+        viewModelScope.launch {
+            app.errorCount.collectLatest { count ->
+                _state.update { it.copy(errorCount = count) }
+            }
+        }
+
+        // Observe last error message
+        viewModelScope.launch {
+            app.lastError.collectLatest { err ->
+                _state.update { it.copy(lastError = err) }
+            }
+        }
+
+        // Observe overlay scale setting
+        viewModelScope.launch {
+            s.overlayScaleFlow.collectLatest { scale ->
+                _state.update { it.copy(overlayScale = scale) }
+            }
+        }
+
+        // Observe overlay transparency setting
+        viewModelScope.launch {
+            s.overlayTransparencyFlow.collectLatest { tr ->
+                _state.update { it.copy(overlayTransparency = tr) }
             }
         }
 
@@ -557,6 +613,16 @@ class MainViewModel : ViewModel() {
         settings?.setOverlayEnabled(enabled)
         _state.update { it.copy(floatingOverlayDesired = enabled) }
         addLogEntry("Floating widget ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setOverlayScale(scale: Float) {
+        settings?.setOverlayScale(scale)
+        _state.update { it.copy(overlayScale = scale) }
+    }
+
+    fun setOverlayTransparency(transparency: Int) {
+        settings?.setOverlayTransparency(transparency)
+        _state.update { it.copy(overlayTransparency = transparency) }
     }
 
     fun setAutostartDesired(enabled: Boolean) {

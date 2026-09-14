@@ -62,6 +62,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -565,6 +567,77 @@ private fun TemperatureDashboardCard(
                         color = AutoTextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Connection metrics: Latency & Errors
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AutoSurfaceCard.copy(alpha = 0.7f))
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Latency / Задержка
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${stringResource(R.string.screen_main_conn_latency_label)}: ",
+                            color = AutoTextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        val latencyText = when {
+                            state.connectionLatencyMs != null -> "${state.connectionLatencyMs} ${stringResource(R.string.screen_main_conn_latency_unit)}"
+                            state.isDemoMode -> "~12 ${stringResource(R.string.screen_main_conn_latency_unit)}"
+                            else -> "—"
+                        }
+                        val latencyColor = when {
+                            state.connectionLatencyMs != null -> {
+                                val lat = state.connectionLatencyMs
+                                if (lat < 100) AutoEmerald else if (lat < 300) AutoAmber else AutoRed
+                            }
+                            state.isDemoMode -> AutoCyan
+                            else -> AutoTextSecondary
+                        }
+                        Text(
+                            text = latencyText,
+                            color = latencyColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    // Errors / Ошибки
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${stringResource(R.string.screen_main_conn_errors_label)}: ",
+                            color = AutoTextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        val errColor = if (state.errorCount > 0) AutoRed else AutoEmerald
+                        Text(
+                            text = "${state.errorCount}",
+                            color = errColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                if (state.errorCount > 0 && !state.lastError.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.screen_main_conn_last_error_label, state.lastError),
+                        color = AutoRed,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 2
                     )
                 }
             }
@@ -1174,6 +1247,134 @@ private fun ControlsAndSettingsSection(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = AutoAmber)
                 ) {
                     Text(stringResource(R.string.screen_main_grant_overlay_permission))
+                }
+            }
+
+            if (state.floatingOverlayDesired) {
+                // Widget Size Slider & presets
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.screen_main_widget_size_title),
+                            color = AutoTextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "${(state.overlayScale * 100).toInt()}%",
+                            color = AutoCyan,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    Slider(
+                        value = state.overlayScale,
+                        onValueChange = { vm.setOverlayScale(it) },
+                        valueRange = 0.7f..1.5f,
+                        steps = 7,
+                        colors = SliderDefaults.colors(
+                            thumbColor = AutoCyan,
+                            activeTrackColor = AutoCyan,
+                            inactiveTrackColor = AutoSurfaceCard
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(0.75f to "75%", 1.0f to "100%", 1.25f to "125%", 1.5f to "150%").forEach { (sc, label) ->
+                            val isSelected = kotlin.math.abs(state.overlayScale - sc) < 0.05f
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { vm.setOverlayScale(sc) },
+                                label = { Text(label, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AutoCyan,
+                                    selectedLabelColor = Color.Black,
+                                    containerColor = AutoSurfaceCard,
+                                    labelColor = AutoTextPrimary
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                // Widget Transparency Slider & presets
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.screen_main_widget_transparency_title),
+                                color = AutoTextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = stringResource(R.string.screen_main_widget_transparency_hint),
+                                color = AutoTextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Text(
+                            text = "${state.overlayTransparency}%",
+                            color = AutoCyan,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    Slider(
+                        value = state.overlayTransparency.toFloat(),
+                        onValueChange = { vm.setOverlayTransparency(it.toInt()) },
+                        valueRange = 0f..100f,
+                        steps = 9,
+                        colors = SliderDefaults.colors(
+                            thumbColor = AutoCyan,
+                            activeTrackColor = AutoCyan,
+                            inactiveTrackColor = AutoSurfaceCard
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            0 to stringResource(R.string.screen_main_widget_transparency_solid),
+                            25 to "25%",
+                            50 to "50%",
+                            100 to stringResource(R.string.screen_main_widget_transparency_transparent)
+                        ).forEach { (tr, label) ->
+                            val isSelected = kotlin.math.abs(state.overlayTransparency - tr) <= 5
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { vm.setOverlayTransparency(tr) },
+                                label = { Text(label, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AutoCyan,
+                                    selectedLabelColor = Color.Black,
+                                    containerColor = AutoSurfaceCard,
+                                    labelColor = AutoTextPrimary
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
 
