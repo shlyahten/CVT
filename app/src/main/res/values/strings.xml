@@ -96,12 +96,22 @@
     <string name="screen_main_temp_zone_hot">OVERHEAT (≥100°C)</string>
 
     <!-- Overlay widget -->
-    <string name="overlay_cvt_temp1_placeholder">CVT Temp1: —</string>
-    <string name="overlay_cvt_temp1_no_data">CVT Temp1: —</string>
-    <string name="overlay_cvt_temp1_value">CVT Temp1: %1$.1f °C</string>
+    <string name="overlay_cvt_temp1_placeholder">--</string>
+    <string name="overlay_cvt_temp1_no_data">--</string>
+    <string name="overlay_cvt_temp1_value">%1$.1f °C</string>
     <string name="overlay_notification_channel_name">CVT Monitoring</string>
     <string name="overlay_notification_title">CVT Temp1</string>
     <string name="overlay_notification_text">Floating widget active</string>
+    <string name="screen_main_widget_size_title">Widget Size</string>
+    <string name="screen_main_widget_transparency_title">Widget Transparency</string>
+    <string name="screen_main_widget_transparency_hint" formatted="false">0% solid background, 100% transparent</string>
+    <string name="screen_main_widget_transparency_solid">Solid</string>
+    <string name="screen_main_widget_transparency_transparent">Transparent</string>
+    <string name="screen_main_conn_latency_label">Latency</string>
+    <string name="screen_main_conn_latency_unit">ms</string>
+    <string name="screen_main_conn_errors_label">Errors</string>
+    <string name="screen_main_conn_last_error_label">Last error: %1$s</string>
+    <string name="screen_main_conn_no_errors">0</string>
 
     <!-- Main Screen - Oil Degradation -->
     <string name="screen_main_oil_title">CVT Oil Degradation (PID 2110)</string>
@@ -176,6 +186,17 @@
     <string name="permissions_continue_btn">Continue to Monitor</string>
     <string name="permissions_bt_required_warning">Bluetooth permission is required for the app to function</string>
     <string name="permissions_topbar_button">Permissions</string>
+
+    <!-- Connection Optimization Settings -->
+    <string name="screen_main_connection_opt_title">Connection &amp; Speed Optimization</string>
+    <string name="screen_main_fast_timing_title">Fast Protocol (AT AT2)</string>
+    <string name="screen_main_fast_timing_desc">Aggressive ELM327 timing (AT AT2) and 100ms timeout (AT ST 19). Recommended for PIC18F25K80 and v1.5.</string>
+    <string name="screen_main_cache_atsh_title">ATSH Header Caching</string>
+    <string name="screen_main_cache_atsh_desc">Do not resend ATSH when header is unchanged. Saves ~40 ms per poll cycle.</string>
+    <string name="screen_main_poll_interval_title">Poll Interval</string>
+    <string name="screen_main_poll_interval_fast">500 ms (Fast)</string>
+    <string name="screen_main_poll_interval_normal">1 sec (Default)</string>
+    <string name="screen_main_poll_interval_eco">2 sec (Eco)</string>
 
     <!-- GitHub Link -->
     <string name="screen_main_github_link">GitHub: https://github.com/shlyahten/CVT/</string>

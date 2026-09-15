@@ -21,8 +21,23 @@ class AppSettings(context: Context) {
     private val _overlayFlow = MutableStateFlow(isOverlayEnabled())
     val overlayFlow: StateFlow<Boolean> = _overlayFlow.asStateFlow()
 
+    private val _overlayScaleFlow = MutableStateFlow(getOverlayScale())
+    val overlayScaleFlow: StateFlow<Float> = _overlayScaleFlow.asStateFlow()
+
+    private val _overlayTransparencyFlow = MutableStateFlow(getOverlayTransparency())
+    val overlayTransparencyFlow: StateFlow<Int> = _overlayTransparencyFlow.asStateFlow()
+
     private val _formulaFlow = MutableStateFlow(getFormula())
     val formulaFlow: StateFlow<CvtTempFormula> = _formulaFlow.asStateFlow()
+
+    private val _fastTimingFlow = MutableStateFlow(isFastTimingEnabled())
+    val fastTimingFlow: StateFlow<Boolean> = _fastTimingFlow.asStateFlow()
+
+    private val _cacheAtshFlow = MutableStateFlow(isCacheAtshEnabled())
+    val cacheAtshFlow: StateFlow<Boolean> = _cacheAtshFlow.asStateFlow()
+
+    private val _pollIntervalFlow = MutableStateFlow(getPollIntervalMs())
+    val pollIntervalFlow: StateFlow<Long> = _pollIntervalFlow.asStateFlow()
 
     fun getSelectedDeviceAddress(): String? =
         prefs.getString(KEY_DEVICE_ADDRESS, null)
@@ -125,10 +140,44 @@ class AppSettings(context: Context) {
         prefs.edit().putInt(KEY_OVERLAY_X, x).putInt(KEY_OVERLAY_Y, y).apply()
     }
 
+    fun getOverlayScale(): Float = prefs.getFloat(KEY_OVERLAY_SCALE, 1.0f)
+
+    fun setOverlayScale(scale: Float) {
+        val clamped = scale.coerceIn(0.5f, 2.0f)
+        prefs.edit().putFloat(KEY_OVERLAY_SCALE, clamped).apply()
+        _overlayScaleFlow.value = clamped
+    }
+
+    fun getOverlayTransparency(): Int = prefs.getInt(KEY_OVERLAY_TRANSPARENCY, 0)
+
+    fun setOverlayTransparency(percent: Int) {
+        val clamped = percent.coerceIn(0, 100)
+        prefs.edit().putInt(KEY_OVERLAY_TRANSPARENCY, clamped).apply()
+        _overlayTransparencyFlow.value = clamped
+    }
+
     fun getPollIntervalMs(): Long = prefs.getLong(KEY_POLL_INTERVAL_MS, 1000L)
 
     fun setPollIntervalMs(ms: Long) {
-        prefs.edit().putLong(KEY_POLL_INTERVAL_MS, ms).apply()
+        val clamped = ms.coerceAtLeast(300L)
+        prefs.edit().putLong(KEY_POLL_INTERVAL_MS, clamped).apply()
+        _pollIntervalFlow.value = clamped
+    }
+
+    fun isFastTimingEnabled(): Boolean =
+        prefs.getBoolean(KEY_FAST_TIMING, true)
+
+    fun setFastTimingEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FAST_TIMING, enabled).apply()
+        _fastTimingFlow.value = enabled
+    }
+
+    fun isCacheAtshEnabled(): Boolean =
+        prefs.getBoolean(KEY_CACHE_ATSH, true)
+
+    fun setCacheAtshEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CACHE_ATSH, enabled).apply()
+        _cacheAtshFlow.value = enabled
     }
 
     fun isOnboardingCompleted(): Boolean =
@@ -175,7 +224,11 @@ class AppSettings(context: Context) {
         private const val KEY_FORMULA = "pref_formula"
         private const val KEY_OVERLAY_X = "pref_overlay_x"
         private const val KEY_OVERLAY_Y = "pref_overlay_y"
+        private const val KEY_OVERLAY_SCALE = "pref_overlay_scale"
+        private const val KEY_OVERLAY_TRANSPARENCY = "pref_overlay_transparency"
         private const val KEY_POLL_INTERVAL_MS = "pref_poll_interval_ms"
+        private const val KEY_FAST_TIMING = "pref_fast_timing"
+        private const val KEY_CACHE_ATSH = "pref_cache_atsh"
         private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
         private const val KEY_LAST_OIL_DEGRADATION = "pref_last_oil_degradation"
         private const val KEY_OIL_DEGRADATION_HISTORY = "pref_oil_degradation_history"

@@ -34,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -198,6 +199,8 @@ class CvtOverlayService : Service() {
                     if (settings.isAutoEnableBluetoothEnabled()) {
                         Log.i(TAG, "Bluetooth (Bluetooth 2) is disabled. Auto-activating...")
                         withContext(Dispatchers.Main) {
+                            app.updateBtStatus(BtStatus.ERROR)
+                            app.updateConnectionMetrics(latencyMs = null, errorIncrement = false, errorMsg = getString(R.string.status_bluetooth_disabled))
                             app.updateData(null, null, false, getString(R.string.status_enabling_bluetooth))
                             updateNotificationText(getString(R.string.status_enabling_bluetooth))
                         }
@@ -213,6 +216,8 @@ class CvtOverlayService : Service() {
                     if (!adapter.isEnabled) {
                         Log.w(TAG, "Bluetooth is still disabled. Waiting 3s before retry...")
                         withContext(Dispatchers.Main) {
+                            app.updateBtStatus(BtStatus.ERROR)
+                            app.updateConnectionMetrics(latencyMs = null, errorIncrement = false, errorMsg = getString(R.string.status_bluetooth_disabled))
                             app.updateData(null, null, false, getString(R.string.status_bluetooth_disabled))
                             updateNotificationText(getString(R.string.status_bluetooth_disabled))
                         }
@@ -234,6 +239,8 @@ class CvtOverlayService : Service() {
                         Log.i(TAG, "Auto-selected OBDII device: ${prioritized.name} (${prioritized.address})")
                     } else {
                         withContext(Dispatchers.Main) {
+                            app.updateBtStatus(BtStatus.CONNECTING)
+                            app.updateConnectionMetrics(latencyMs = null)
                             app.updateData(null, null, false, getString(R.string.status_no_paired_devices))
                             updateNotificationText(getString(R.string.status_no_paired_devices))
                         }
@@ -244,16 +251,24 @@ class CvtOverlayService : Service() {
 
                 if (!repo.isConnected()) {
                     withContext(Dispatchers.Main) {
+                        app.updateBtStatus(BtStatus.CONNECTING)
+                        app.updateConnectionMetrics(latencyMs = null)
                         app.updateData(null, null, false, getString(R.string.status_connecting))
                         updateNotificationText(getString(R.string.status_connecting))
                     }
 
-                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress...")
-                    val connectResult = repo.connect(targetAddress)
+                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress (fastTiming=${settings.isFastTimingEnabled()}, cacheAtsh=${settings.isCacheAtshEnabled()})...")
+                    val connectResult = repo.connect(
+                        deviceAddress = targetAddress,
+                        fastTiming = settings.isFastTimingEnabled(),
+                        cacheAtsh = settings.isCacheAtshEnabled(),
+                    )
                     if (connectResult.isFailure) {
                         val errMsg = connectResult.exceptionOrNull()?.message ?: "Connect failed"
                         Log.w(TAG, "Connect failed: $errMsg. Retrying in 5s...")
                         withContext(Dispatchers.Main) {
+                            app.updateBtStatus(BtStatus.ERROR)
+                            app.updateConnectionMetrics(latencyMs = null, errorIncrement = true, errorMsg = errMsg)
                             app.updateData(null, null, false, getString(R.string.status_connect_error, errMsg))
                             updateNotificationText(getString(R.string.status_connect_error, errMsg))
                         }
@@ -262,6 +277,9 @@ class CvtOverlayService : Service() {
                     }
                     Log.i(TAG, "Connected to OBD adapter!")
                     consecutiveErrors = 0
+                    withContext(Dispatchers.Main) {
+                        app.updateBtStatus(BtStatus.CONNECTED)
+                    }
 
                     // Automatically read oil degradation once immediately after connection
                     try {
@@ -277,10 +295,12 @@ class CvtOverlayService : Service() {
                 }
 
                 // Connected loop: query CVT temperature PID 2103
+                val queryStartTime = System.currentTimeMillis()
                 try {
                     val readTempUseCase = ReadCvtTemperature(repo)
                     val rawResult = readTempUseCase.execute(ReadCvtTemperature.Formula.RawCount)
                     val n = rawResult.getOrThrow().toInt().coerceIn(0, 255)
+                    val latencyMs = (System.currentTimeMillis() - queryStartTime).coerceAtLeast(1L)
 
                     // Compute values via fast-path Horner's scheme
                     val temp1 = CvtTempParser.convertCountToTemp1(n)
@@ -296,22 +316,29 @@ class CvtOverlayService : Service() {
                     consecutiveErrors = 0
 
                     withContext(Dispatchers.Main) {
+                        app.updateBtStatus(BtStatus.CONNECTED)
+                        app.updateConnectionMetrics(latencyMs = latencyMs)
                         app.updateData(displayTemp, n, true, getString(R.string.status_ok))
                         val unit = if (activeFormula == CvtTempFormula.RawCount) "cnt" else "°C"
                         val notifText = String.format("CVT: %.1f%s (count %d)", displayTemp, unit, n)
                         updateNotificationText(notifText)
                     }
                 } catch (e: Exception) {
+                    val latencyMs = (System.currentTimeMillis() - queryStartTime).coerceAtLeast(1L)
                     consecutiveErrors++
-                    Log.w(TAG, "OBD query error ($consecutiveErrors): ${e.message}")
+                    val errMsg = e.message ?: "OBD query error"
+                    Log.w(TAG, "OBD query error ($consecutiveErrors): $errMsg")
                     withContext(Dispatchers.Main) {
-                        app.updateData(null, null, true, getString(R.string.status_poll_error, e.message ?: ""))
+                        app.updateBtStatus(BtStatus.ERROR)
+                        app.updateConnectionMetrics(latencyMs = latencyMs, errorIncrement = true, errorMsg = errMsg)
+                        app.updateData(null, null, true, getString(R.string.status_poll_error, errMsg))
                     }
 
                     if (consecutiveErrors >= 3) {
                         Log.w(TAG, "Too many errors, resetting connection...")
                         repo.disconnect()
                         withContext(Dispatchers.Main) {
+                            app.updateBtStatus(BtStatus.ERROR)
                             app.updateData(null, null, false, getString(R.string.status_not_connected))
                             updateNotificationText(getString(R.string.status_connecting))
                         }
@@ -343,6 +370,10 @@ class CvtOverlayService : Service() {
         }
 
         demoJob = serviceScope.launch(Dispatchers.Default) {
+            withContext(Dispatchers.Main) {
+                app.updateBtStatus(BtStatus.CONNECTED)
+                app.updateConnectionMetrics(latencyMs = 12L, resetErrors = true)
+            }
             var count = 80
             var step = 6
             while (isActive) {
@@ -356,6 +387,8 @@ class CvtOverlayService : Service() {
                 }
 
                 withContext(Dispatchers.Main) {
+                    app.updateBtStatus(BtStatus.CONNECTED)
+                    app.updateConnectionMetrics(latencyMs = 12L)
                     app.updateData(displayTemp, count, true, getString(R.string.screen_main_demo_status))
                     val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
                     updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, count))
@@ -401,6 +434,8 @@ class CvtOverlayService : Service() {
         }
 
         serviceScope.launch(Dispatchers.Main) {
+            app.updateBtStatus(BtStatus.CONNECTED)
+            app.updateConnectionMetrics(latencyMs = 12L, resetErrors = true)
             app.updateData(displayTemp, bestCount, true, getString(R.string.screen_main_demo_status))
             val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
             updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, bestCount))
@@ -460,9 +495,110 @@ class CvtOverlayService : Service() {
             overlayParams = params
 
             attachDragAndClickListener(view, params)
+            applyOverlayStyling()
+            updateOverlayUi(app.btStatus.value, app.cvtTemp1C.value)
             windowManager?.addView(view, params)
         } catch (e: Exception) {
             Log.e(TAG, "Error adding overlay view", e)
+        }
+    }
+
+    private fun applyOverlayStyling() {
+        val view = overlayView ?: return
+        val tv = tempTextView ?: return
+        val dot = statusDotView ?: return
+
+        val scale = settings.getOverlayScale()
+        val transparency = settings.getOverlayTransparency().coerceIn(0, 100)
+
+        // 1. Text size
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f * scale)
+
+        // 2. Status dot dimensions and margins
+        val density = resources.displayMetrics.density
+        val dotSizePx = (8 * density * scale).toInt().coerceAtLeast(4)
+        val dotMarginEndPx = (8 * density * scale).toInt().coerceAtLeast(2)
+        dot.layoutParams = (dot.layoutParams as? android.widget.LinearLayout.LayoutParams
+            ?: android.widget.LinearLayout.LayoutParams(dotSizePx, dotSizePx)).apply {
+            width = dotSizePx
+            height = dotSizePx
+            marginEnd = dotMarginEndPx
+        }
+
+        // 3. Root padding
+        val padHorizPx = (14 * density * scale).toInt().coerceAtLeast(4)
+        val padVertPx = (8 * density * scale).toInt().coerceAtLeast(4)
+        view.setPadding(padHorizPx, padVertPx, padHorizPx, padVertPx)
+
+        // 4. Background transparency & corner radius
+        val bgAlpha = ((1.0f - (transparency / 100.0f)) * 235).toInt().coerceIn(0, 255)
+        val strokeAlpha = ((1.0f - (transparency / 100.0f)) * 255).toInt().coerceIn(0, 255)
+        val cornerRadiusPx = 14 * density * scale
+
+        val bgDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = cornerRadiusPx
+            setColor(Color.argb(bgAlpha, 0x14, 0x17, 0x22))
+            if (strokeAlpha > 0) {
+                setStroke((1.5f * density).toInt().coerceAtLeast(1), Color.argb(strokeAlpha, 0x3B, 0x42, 0x52))
+            } else {
+                setStroke(0, Color.TRANSPARENT)
+            }
+        }
+        view.background = bgDrawable
+
+        view.requestLayout()
+        overlayParams?.let { params ->
+            if (view.isAttachedToWindow) {
+                runCatching { windowManager?.updateViewLayout(view, params) }
+            }
+        }
+    }
+
+    private fun updateOverlayUi(btStatus: BtStatus, temp: Double?) {
+        val tv = tempTextView ?: return
+        val dot = statusDotView ?: return
+
+        // 1. Bluetooth Connection Status Circle (Green, Yellow, Red)
+        // зеленый - ок, желтый - соединение, красный - ошибка
+        val dotColor = when (btStatus) {
+            BtStatus.CONNECTED -> Color.parseColor("#22C55E") // Green: OK
+            BtStatus.CONNECTING -> Color.parseColor("#F59E0B") // Yellow: Connecting
+            BtStatus.ERROR, BtStatus.DISCONNECTED -> Color.parseColor("#EF4444") // Red: Error / Lost connection
+        }
+
+        val dotBg = dot.background
+        if (dotBg is GradientDrawable) {
+            dotBg.setColor(dotColor)
+        } else {
+            val d = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(dotColor)
+            }
+            dot.background = d
+        }
+
+        // 2. Display text: "--" on error or lost connection or null temp; temperature when connected
+        if (btStatus == BtStatus.CONNECTED && temp != null) {
+            val formula = settings.getFormula()
+            val displayStr = if (formula == CvtTempFormula.RawCount) {
+                "${temp.toInt()} cnt"
+            } else {
+                String.format(java.util.Locale.US, "%.1f°C", temp)
+            }
+            tv.text = displayStr
+
+            val textColor = when {
+                formula == CvtTempFormula.RawCount -> Color.WHITE
+                temp < 50.0 -> Color.parseColor("#38BDF8") // Cold (Ice Blue)
+                temp in 50.0..89.9 -> Color.parseColor("#22C55E") // Optimal (Emerald Green)
+                temp in 90.0..99.9 -> Color.parseColor("#F59E0B") // Warm / Elevated (Amber)
+                else -> Color.parseColor("#EF4444") // Hot / Overheat (Crimson)
+            }
+            tv.setTextColor(textColor)
+        } else {
+            tv.text = "--"
+            tv.setTextColor(Color.parseColor("#94A3B8"))
         }
     }
 
@@ -526,43 +662,36 @@ class CvtOverlayService : Service() {
         }
 
         serviceScope.launch {
-            app.cvtTemp1C.collectLatest { temp ->
-                val tv = tempTextView ?: return@collectLatest
-                val dot = statusDotView
-                val formula = settings.getFormula()
+            settings.overlayScaleFlow.collectLatest {
+                applyOverlayStyling()
+            }
+        }
 
-                if (temp != null) {
-                    val displayStr = if (formula == CvtTempFormula.RawCount) {
-                        "${temp.toInt()} cnt"
-                    } else {
-                        String.format("%.1f°C", temp)
-                    }
-                    tv.text = displayStr
+        serviceScope.launch {
+            settings.overlayTransparencyFlow.collectLatest {
+                applyOverlayStyling()
+            }
+        }
 
-                    // Dynamic color coding for temperature zones
-                    val (textColor, dotColor) = when {
-                        formula == CvtTempFormula.RawCount -> Color.WHITE to Color.parseColor("#38BDF8")
-                        temp < 50.0 -> Color.parseColor("#38BDF8") to Color.parseColor("#38BDF8") // Cold (Ice Blue)
-                        temp in 50.0..89.9 -> Color.parseColor("#22C55E") to Color.parseColor("#22C55E") // Optimal (Emerald Green)
-                        temp in 90.0..99.9 -> Color.parseColor("#F59E0B") to Color.parseColor("#F59E0B") // Warm / Elevated (Amber)
-                        else -> Color.parseColor("#EF4444") to Color.parseColor("#EF4444") // Hot / Overheat (Crimson)
-                    }
+        serviceScope.launch {
+            combine(app.btStatus, app.cvtTemp1C) { status, temp ->
+                Pair(status, temp)
+            }.collectLatest { (btStatus, temp) ->
+                updateOverlayUi(btStatus, temp)
+            }
+        }
 
-                    tv.setTextColor(textColor)
-                    dot?.background?.let { d ->
-                        if (d is GradientDrawable) {
-                            d.setColor(dotColor)
-                        }
-                    }
-                } else {
-                    tv.text = getString(R.string.overlay_cvt_temp1_no_data)
-                    tv.setTextColor(Color.parseColor("#94A3B8"))
-                    dot?.background?.let { d ->
-                        if (d is GradientDrawable) {
-                            d.setColor(Color.parseColor("#64748B"))
-                        }
-                    }
-                }
+        serviceScope.launch {
+            settings.fastTimingFlow.collectLatest { fastTiming ->
+                Log.d(TAG, "Fast timing preference changed: $fastTiming")
+                obdRepository?.updateFastTiming(fastTiming)
+            }
+        }
+
+        serviceScope.launch {
+            settings.cacheAtshFlow.collectLatest { cacheAtsh ->
+                Log.d(TAG, "Cache ATSH preference changed: $cacheAtsh")
+                obdRepository?.setCacheAtsh(cacheAtsh)
             }
         }
     }
@@ -653,6 +782,8 @@ class CvtOverlayService : Service() {
         obdRepository?.close()
         obdRepository = null
         app.updateData(null, null, false, getString(R.string.screen_main_status_stopped))
+        app.updateBtStatus(BtStatus.DISCONNECTED)
+        app.updateConnectionMetrics(latencyMs = null)
         super.onDestroy()
     }
 }

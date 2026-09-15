@@ -96,12 +96,22 @@
     <string name="screen_main_temp_zone_hot">ПЕРЕГРЕВ (≥100°C)</string>
 
     <!-- Overlay widget -->
-    <string name="overlay_cvt_temp1_placeholder">CVT Temp1: —</string>
-    <string name="overlay_cvt_temp1_no_data">CVT Temp1: —</string>
-    <string name="overlay_cvt_temp1_value">CVT Temp1: %1$.1f °C</string>
+    <string name="overlay_cvt_temp1_placeholder">--</string>
+    <string name="overlay_cvt_temp1_no_data">--</string>
+    <string name="overlay_cvt_temp1_value">%1$.1f °C</string>
     <string name="overlay_notification_channel_name">Мониторинг CVT</string>
     <string name="overlay_notification_title">CVT Temp1</string>
     <string name="overlay_notification_text">Плавающий виджет активен</string>
+    <string name="screen_main_widget_size_title">Размер виджета</string>
+    <string name="screen_main_widget_transparency_title">Прозрачность виджета</string>
+    <string name="screen_main_widget_transparency_hint" formatted="false">0% плотный фон, 100% прозрачный</string>
+    <string name="screen_main_widget_transparency_solid">Плотный</string>
+    <string name="screen_main_widget_transparency_transparent">Прозрачный</string>
+    <string name="screen_main_conn_latency_label">Задержка</string>
+    <string name="screen_main_conn_latency_unit">мс</string>
+    <string name="screen_main_conn_errors_label">Ошибки</string>
+    <string name="screen_main_conn_last_error_label">Посл. ошибка: %1$s</string>
+    <string name="screen_main_conn_no_errors">0</string>
 
     <!-- Main Screen - Oil Degradation -->
     <string name="screen_main_oil_title">Деградация масла CVT (PID 2110)</string>
@@ -176,6 +186,17 @@
     <string name="permissions_continue_btn">Перейти к монитору</string>
     <string name="permissions_bt_required_warning">Для работы приложения требуется разрешение на доступ к Bluetooth</string>
     <string name="permissions_topbar_button">Разрешения</string>
+
+    <!-- Connection Optimization Settings -->
+    <string name="screen_main_connection_opt_title">Оптимизация связи с адаптером</string>
+    <string name="screen_main_fast_timing_title">Быстрый протокол (AT AT2)</string>
+    <string name="screen_main_fast_timing_desc">Агрессивный тайминг ELM327 (AT AT2) и таймаут 100 мс (AT ST 19). Рекомендуется для чипов PIC18F25K80 и v1.5.</string>
+    <string name="screen_main_cache_atsh_title">Кэширование заголовка ATSH</string>
+    <string name="screen_main_cache_atsh_desc">Не отправлять повторно ATSH при неизменном заголовке. Экономит ~40 мс на запрос.</string>
+    <string name="screen_main_poll_interval_title">Интервал опроса</string>
+    <string name="screen_main_poll_interval_fast">500 мс (Быстро)</string>
+    <string name="screen_main_poll_interval_normal">1 сек (Стандарт)</string>
+    <string name="screen_main_poll_interval_eco">2 сек (Эконом)</string>
 
     <!-- GitHub Link -->
     <string name="screen_main_github_link">GitHub: https://github.com/shlyahten/CVT/</string>
