@@ -257,8 +257,12 @@ class CvtOverlayService : Service() {
                         updateNotificationText(getString(R.string.status_connecting))
                     }
 
-                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress...")
-                    val connectResult = repo.connect(targetAddress)
+                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress (fastTiming=${settings.isFastTimingEnabled()}, cacheAtsh=${settings.isCacheAtshEnabled()})...")
+                    val connectResult = repo.connect(
+                        deviceAddress = targetAddress,
+                        fastTiming = settings.isFastTimingEnabled(),
+                        cacheAtsh = settings.isCacheAtshEnabled(),
+                    )
                     if (connectResult.isFailure) {
                         val errMsg = connectResult.exceptionOrNull()?.message ?: "Connect failed"
                         Log.w(TAG, "Connect failed: $errMsg. Retrying in 5s...")
@@ -674,6 +678,20 @@ class CvtOverlayService : Service() {
                 Pair(status, temp)
             }.collectLatest { (btStatus, temp) ->
                 updateOverlayUi(btStatus, temp)
+            }
+        }
+
+        serviceScope.launch {
+            settings.fastTimingFlow.collectLatest { fastTiming ->
+                Log.d(TAG, "Fast timing preference changed: $fastTiming")
+                obdRepository?.updateFastTiming(fastTiming)
+            }
+        }
+
+        serviceScope.launch {
+            settings.cacheAtshFlow.collectLatest { cacheAtsh ->
+                Log.d(TAG, "Cache ATSH preference changed: $cacheAtsh")
+                obdRepository?.setCacheAtsh(cacheAtsh)
             }
         }
     }

@@ -32,7 +32,11 @@ interface ObdRepository : Closeable {
     /**
      * Connect to an OBD device via Bluetooth.
      */
-    suspend fun connect(deviceAddress: String): Result<Unit>
+    suspend fun connect(
+        deviceAddress: String,
+        fastTiming: Boolean = false,
+        cacheAtsh: Boolean = true,
+    ): Result<Unit>
 
     /**
      * Disconnect from the current OBD session.
@@ -54,6 +58,16 @@ interface ObdRepository : Closeable {
      * Query a single PID and return the calculated value.
      */
     suspend fun queryPid(spec: PidSpec): Result<Double>
+
+    /**
+     * Dynamically update fast timing (AT AT2/AT AT1) on active session.
+     */
+    fun updateFastTiming(fastTiming: Boolean)
+
+    /**
+     * Update whether ATSH header caching is enabled.
+     */
+    fun setCacheAtsh(cacheAtsh: Boolean)
 }
 
 /**
@@ -65,6 +79,8 @@ class ObdRepositoryImpl(
     
     private var connection: BluetoothSppClient.Connection? = null
     private var session: Elm327Session? = null
+    private var fastTimingEnabled: Boolean = false
+    private var cacheAtshEnabled: Boolean = true
     
     override fun getBondedDevices(): List<BluetoothDevice> {
         val adapter = bluetoothAdapter ?: return emptyList()
@@ -73,7 +89,13 @@ class ObdRepositoryImpl(
         }.getOrDefault(emptyList())
     }
     
-    override suspend fun connect(deviceAddress: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun connect(
+        deviceAddress: String,
+        fastTiming: Boolean,
+        cacheAtsh: Boolean,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        fastTimingEnabled = fastTiming
+        cacheAtshEnabled = cacheAtsh
         runCatching {
             val adapter = bluetoothAdapter ?: error("BluetoothAdapter is null")
             adapter.cancelDiscovery()
@@ -84,12 +106,27 @@ class ObdRepositoryImpl(
             
             connection = conn
             session = Elm327Session(conn.input, conn.output).apply {
-                initialize(headerHex = "7E1")
+                initialize(headerHex = "7E1", fastTiming = fastTiming)
             }
+        }
+    }
+
+    override fun updateFastTiming(fastTiming: Boolean) {
+        fastTimingEnabled = fastTiming
+        session?.runCatching {
+            configureTiming(fastTiming)
+        }
+    }
+
+    override fun setCacheAtsh(cacheAtsh: Boolean) {
+        cacheAtshEnabled = cacheAtsh
+        if (!cacheAtsh) {
+            session?.resetHeader()
         }
     }
     
     override fun disconnect() {
+        session?.resetHeader()
         runCatching { session?.close() }
         runCatching { connection?.close() }
         session = null
@@ -104,8 +141,12 @@ class ObdRepositoryImpl(
         runCatching {
             val currentSession = session ?: error("Not connected to OBD device")
             
-            // Ensure header is set
-            currentSession.sendExpectOk("ATSH${spec.headerHex}", timeoutMs = 800)
+            // Ensure header is set (cached if enabled to save ~40ms round-trip)
+            if (cacheAtshEnabled) {
+                currentSession.setHeader(spec.headerHex)
+            } else {
+                currentSession.sendExpectOk("ATSH${spec.headerHex}", timeoutMs = 800)
+            }
             
             val response = currentSession.send(spec.modeAndPid, timeoutMs = 2000)
             

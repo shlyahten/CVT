@@ -187,6 +187,17 @@
     <string name="permissions_bt_required_warning">Для работы приложения требуется разрешение на доступ к Bluetooth</string>
     <string name="permissions_topbar_button">Разрешения</string>
 
+    <!-- Connection Optimization Settings -->
+    <string name="screen_main_connection_opt_title">Оптимизация связи с адаптером</string>
+    <string name="screen_main_fast_timing_title">Быстрый протокол (AT AT2)</string>
+    <string name="screen_main_fast_timing_desc">Агрессивный тайминг ELM327 (AT AT2) и таймаут 100 мс (AT ST 19). Рекомендуется для чипов PIC18F25K80 и v1.5.</string>
+    <string name="screen_main_cache_atsh_title">Кэширование заголовка ATSH</string>
+    <string name="screen_main_cache_atsh_desc">Не отправлять повторно ATSH при неизменном заголовке. Экономит ~40 мс на запрос.</string>
+    <string name="screen_main_poll_interval_title">Интервал опроса</string>
+    <string name="screen_main_poll_interval_fast">500 мс (Быстро)</string>
+    <string name="screen_main_poll_interval_normal">1 сек (Стандарт)</string>
+    <string name="screen_main_poll_interval_eco">2 сек (Эконом)</string>
+
     <!-- GitHub Link -->
     <string name="screen_main_github_link">GitHub: https://github.com/shlyahten/CVT/</string>
 </resources>

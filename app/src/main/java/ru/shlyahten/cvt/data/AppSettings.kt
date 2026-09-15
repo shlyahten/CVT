@@ -30,6 +30,15 @@ class AppSettings(context: Context) {
     private val _formulaFlow = MutableStateFlow(getFormula())
     val formulaFlow: StateFlow<CvtTempFormula> = _formulaFlow.asStateFlow()
 
+    private val _fastTimingFlow = MutableStateFlow(isFastTimingEnabled())
+    val fastTimingFlow: StateFlow<Boolean> = _fastTimingFlow.asStateFlow()
+
+    private val _cacheAtshFlow = MutableStateFlow(isCacheAtshEnabled())
+    val cacheAtshFlow: StateFlow<Boolean> = _cacheAtshFlow.asStateFlow()
+
+    private val _pollIntervalFlow = MutableStateFlow(getPollIntervalMs())
+    val pollIntervalFlow: StateFlow<Long> = _pollIntervalFlow.asStateFlow()
+
     fun getSelectedDeviceAddress(): String? =
         prefs.getString(KEY_DEVICE_ADDRESS, null)
 
@@ -150,7 +159,25 @@ class AppSettings(context: Context) {
     fun getPollIntervalMs(): Long = prefs.getLong(KEY_POLL_INTERVAL_MS, 1000L)
 
     fun setPollIntervalMs(ms: Long) {
-        prefs.edit().putLong(KEY_POLL_INTERVAL_MS, ms).apply()
+        val clamped = ms.coerceAtLeast(300L)
+        prefs.edit().putLong(KEY_POLL_INTERVAL_MS, clamped).apply()
+        _pollIntervalFlow.value = clamped
+    }
+
+    fun isFastTimingEnabled(): Boolean =
+        prefs.getBoolean(KEY_FAST_TIMING, true)
+
+    fun setFastTimingEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FAST_TIMING, enabled).apply()
+        _fastTimingFlow.value = enabled
+    }
+
+    fun isCacheAtshEnabled(): Boolean =
+        prefs.getBoolean(KEY_CACHE_ATSH, true)
+
+    fun setCacheAtshEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CACHE_ATSH, enabled).apply()
+        _cacheAtshFlow.value = enabled
     }
 
     fun isOnboardingCompleted(): Boolean =
@@ -200,6 +227,8 @@ class AppSettings(context: Context) {
         private const val KEY_OVERLAY_SCALE = "pref_overlay_scale"
         private const val KEY_OVERLAY_TRANSPARENCY = "pref_overlay_transparency"
         private const val KEY_POLL_INTERVAL_MS = "pref_poll_interval_ms"
+        private const val KEY_FAST_TIMING = "pref_fast_timing"
+        private const val KEY_CACHE_ATSH = "pref_cache_atsh"
         private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
         private const val KEY_LAST_OIL_DEGRADATION = "pref_last_oil_degradation"
         private const val KEY_OIL_DEGRADATION_HISTORY = "pref_oil_degradation_history"

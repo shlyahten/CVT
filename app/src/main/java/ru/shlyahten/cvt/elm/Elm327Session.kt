@@ -19,9 +19,41 @@ class Elm327Session(
         val response: ElmResponseParser.Parsed,
     )
 
-    fun initialize(headerHex: String = "7E1") {
-        Log.d(TAG, "=== Starting ELM327 initialization ===")
+    private var currentHeaderHex: String? = null
+
+    fun getCurrentHeader(): String? = currentHeaderHex
+
+    fun resetHeader() {
+        currentHeaderHex = null
+    }
+
+    fun setHeader(headerHex: String) {
+        val clean = headerHex.trim().uppercase()
+        if (currentHeaderHex != clean) {
+            Log.d(TAG, "Setting ATSH$clean (previous: $currentHeaderHex)...")
+            sendExpectOk("ATSH$clean", timeoutMs = 800)
+            currentHeaderHex = clean
+        } else {
+            Log.d(TAG, "ATSH$clean is already cached, skipping")
+        }
+    }
+
+    fun configureTiming(fastTiming: Boolean) {
+        if (fastTiming) {
+            Log.d(TAG, "Configuring fast timing: ATAT2 (aggressive) + ATST19 (100ms timeout)...")
+            sendExpectOk("ATAT2")
+            sendExpectOk("ATST19")
+        } else {
+            Log.d(TAG, "Configuring standard timing: ATAT1 (standard) + ATST32 (200ms timeout)...")
+            sendExpectOk("ATAT1")
+            sendExpectOk("ATST32")
+        }
+    }
+
+    fun initialize(headerHex: String = "7E1", fastTiming: Boolean = false) {
+        Log.d(TAG, "=== Starting ELM327 initialization (fastTiming=$fastTiming) ===")
         Log.d(TAG, "Header: $headerHex")
+        currentHeaderHex = null
 
         // Reset + basic setup per algorithm requirements for CVT ECU communication
         Log.d(TAG, "Sending ATZ (reset)...")
@@ -42,8 +74,9 @@ class Elm327Session(
         Log.d(TAG, "Sending ATSP6 (ISO 15765-4 CAN)...")
         sendExpectOk("ATSP6") // ISO 15765-4 CAN (11bit 500k)
 
-        Log.d(TAG, "Sending ATSH$headerHex (set header to $headerHex)...")
-        sendExpectOk("ATSH$headerHex")
+        configureTiming(fastTiming)
+
+        setHeader(headerHex)
 
         Log.d(TAG, "=== ELM327 initialization complete ===")
     }
@@ -106,7 +139,7 @@ class Elm327Session(
                         break
                     }
                 } else {
-                    Thread.sleep(20)
+                    Thread.sleep(5)
                 }
             }
         } catch (e: Exception) {

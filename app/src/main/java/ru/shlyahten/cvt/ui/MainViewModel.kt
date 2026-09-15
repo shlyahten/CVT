@@ -64,6 +64,9 @@ data class UiState(
     val errorCount: Int = 0,
     val lastError: String? = null,
     val btStatus: ru.shlyahten.cvt.BtStatus = ru.shlyahten.cvt.BtStatus.DISCONNECTED,
+    val fastTimingDesired: Boolean = true,
+    val cacheAtshDesired: Boolean = true,
+    val pollIntervalMs: Long = 1000L,
 )
 
 enum class CvtTempFormula { Temp1, Temp2, RawCount }
@@ -107,6 +110,9 @@ class MainViewModel : ViewModel() {
         val savedAutoEnableBt = s.isAutoEnableBluetoothEnabled()
         val savedScale = s.getOverlayScale()
         val savedTransparency = s.getOverlayTransparency()
+        val savedFastTiming = s.isFastTimingEnabled()
+        val savedCacheAtsh = s.isCacheAtshEnabled()
+        val savedPollInterval = s.getPollIntervalMs()
 
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
@@ -129,6 +135,9 @@ class MainViewModel : ViewModel() {
                 errorCount = app.errorCount.value,
                 lastError = app.lastError.value,
                 btStatus = app.btStatus.value,
+                fastTimingDesired = savedFastTiming,
+                cacheAtshDesired = savedCacheAtsh,
+                pollIntervalMs = savedPollInterval,
             )
         }
 
@@ -253,6 +262,27 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             s.overlayTransparencyFlow.collectLatest { tr ->
                 _state.update { it.copy(overlayTransparency = tr) }
+            }
+        }
+
+        // Observe fast timing setting
+        viewModelScope.launch {
+            s.fastTimingFlow.collectLatest { fastTiming ->
+                _state.update { it.copy(fastTimingDesired = fastTiming) }
+            }
+        }
+
+        // Observe cache ATSH setting
+        viewModelScope.launch {
+            s.cacheAtshFlow.collectLatest { cacheAtsh ->
+                _state.update { it.copy(cacheAtshDesired = cacheAtsh) }
+            }
+        }
+
+        // Observe poll interval setting
+        viewModelScope.launch {
+            s.pollIntervalFlow.collectLatest { interval ->
+                _state.update { it.copy(pollIntervalMs = interval) }
             }
         }
 
@@ -635,6 +665,24 @@ class MainViewModel : ViewModel() {
         settings?.setAutoconnectEnabled(enabled)
         _state.update { it.copy(autoconnectDesired = enabled) }
         addLogEntry("Autoconnect ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setFastTimingDesired(enabled: Boolean) {
+        settings?.setFastTimingEnabled(enabled)
+        _state.update { it.copy(fastTimingDesired = enabled) }
+        addLogEntry("Fast timing (AT AT2) ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setCacheAtshDesired(enabled: Boolean) {
+        settings?.setCacheAtshEnabled(enabled)
+        _state.update { it.copy(cacheAtshDesired = enabled) }
+        addLogEntry("ATSH caching ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setPollIntervalMs(intervalMs: Long) {
+        settings?.setPollIntervalMs(intervalMs)
+        _state.update { it.copy(pollIntervalMs = intervalMs) }
+        addLogEntry("Poll interval set to ${intervalMs}ms")
     }
 
     fun connect(context: Context) {

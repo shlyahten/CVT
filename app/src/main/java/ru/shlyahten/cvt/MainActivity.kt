@@ -1192,6 +1192,111 @@ private fun ControlsAndSettingsSection(
         }
     }
 
+    // Connection & Speed Optimization
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AutoSurface),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, AutoBorder)
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                stringResource(R.string.screen_main_connection_opt_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = AutoTextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Fast Timing Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_fast_timing_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_fast_timing_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.fastTimingDesired,
+                    onCheckedChange = { vm.setFastTimingDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Cache ATSH Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_cache_atsh_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_cache_atsh_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.cacheAtshDesired,
+                    onCheckedChange = { vm.setCacheAtshDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Poll Interval Selection
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    stringResource(R.string.screen_main_poll_interval_title),
+                    color = AutoTextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        500L to stringResource(R.string.screen_main_poll_interval_fast),
+                        1000L to stringResource(R.string.screen_main_poll_interval_normal),
+                        2000L to stringResource(R.string.screen_main_poll_interval_eco)
+                    ).forEach { (ms, label) ->
+                        FilterChip(
+                            selected = state.pollIntervalMs == ms,
+                            onClick = { vm.setPollIntervalMs(ms) },
+                            label = { Text(label, fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AutoCyan,
+                                selectedLabelColor = Color.Black,
+                                containerColor = AutoSurfaceCard,
+                                labelColor = AutoTextPrimary
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     // Floating Widget & Teyes Autostart Settings
     Card(
         colors = CardDefaults.cardColors(containerColor = AutoSurface),
