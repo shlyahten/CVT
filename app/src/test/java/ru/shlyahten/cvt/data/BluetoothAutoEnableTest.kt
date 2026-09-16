@@ -38,4 +38,10 @@ class BluetoothAutoEnableTest {
         assertEquals("com.glsx.boot.ACCON", ru.shlyahten.cvt.BootReceiver.ACTION_GLSX_ACCON)
         assertEquals("com.fyt.boot.ACCON", ru.shlyahten.cvt.BootReceiver.ACTION_FYT_ACCON)
     }
+
+    @Test
+    fun testTeyesAccOffActions() {
+        assertEquals("com.glsx.boot.ACCOFF", ru.shlyahten.cvt.BootReceiver.ACTION_GLSX_ACCOFF)
+        assertEquals("com.fyt.boot.ACCOFF", ru.shlyahten.cvt.BootReceiver.ACTION_FYT_ACCOFF)
+    }
 }

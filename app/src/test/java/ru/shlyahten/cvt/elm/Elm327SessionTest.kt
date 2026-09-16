@@ -133,4 +133,37 @@ class Elm327SessionTest {
         val commands = recordedOutput.toString(Charsets.US_ASCII.name())
         assertEquals("ATAT1\rATST32\r", commands)
     }
+
+    @Test
+    fun `setCanReceiveAddress sends ATCRA and caches it`() {
+        val simulatedInput = SimulatedElmStream()
+        val recordedOutput = object : ByteArrayOutputStream() {
+            override fun write(b: ByteArray, off: Int, len: Int) {
+                super.write(b, off, len)
+                simulatedInput.feedResponse("OK\r\n>")
+            }
+        }
+
+        val session = Elm327Session(simulatedInput, recordedOutput)
+
+        assertNull(session.getCurrentFilter())
+
+        // First call sends ATCRA7E9
+        session.setCanReceiveAddress("7E9")
+        assertEquals("7E9", session.getCurrentFilter())
+        assertEquals("ATCRA7E9\r", recordedOutput.toString(Charsets.US_ASCII.name()))
+
+        // Clear output buffer
+        recordedOutput.reset()
+
+        // Second call with same filter should be skipped (cached)
+        session.setCanReceiveAddress("7E9")
+        assertEquals("7E9", session.getCurrentFilter())
+        assertEquals("", recordedOutput.toString(Charsets.US_ASCII.name()))
+
+        // Call with null resets filter (ATAR)
+        session.setCanReceiveAddress(null)
+        assertNull(session.getCurrentFilter())
+        assertEquals("ATAR\r", recordedOutput.toString(Charsets.US_ASCII.name()))
+    }
 }

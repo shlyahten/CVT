@@ -20,11 +20,14 @@ class Elm327Session(
     )
 
     private var currentHeaderHex: String? = null
+    private var currentFilterHex: String? = null
 
     fun getCurrentHeader(): String? = currentHeaderHex
+    fun getCurrentFilter(): String? = currentFilterHex
 
     fun resetHeader() {
         currentHeaderHex = null
+        currentFilterHex = null
     }
 
     fun setHeader(headerHex: String) {
@@ -35,6 +38,21 @@ class Elm327Session(
             currentHeaderHex = clean
         } else {
             Log.d(TAG, "ATSH$clean is already cached, skipping")
+        }
+    }
+
+    fun setCanReceiveAddress(filterHex: String?) {
+        val clean = filterHex?.trim()?.uppercase()
+        if (currentFilterHex != clean) {
+            if (clean.isNullOrBlank()) {
+                Log.d(TAG, "Resetting CAN receive address filter (ATAR)...")
+                sendExpectOk("ATAR", timeoutMs = 800)
+                currentFilterHex = null
+            } else {
+                Log.d(TAG, "Setting CAN receive address filter: ATCRA$clean (previous: $currentFilterHex)...")
+                sendExpectOk("ATCRA$clean", timeoutMs = 800)
+                currentFilterHex = clean
+            }
         }
     }
 
@@ -50,10 +68,11 @@ class Elm327Session(
         }
     }
 
-    fun initialize(headerHex: String = "7E1", fastTiming: Boolean = false) {
-        Log.d(TAG, "=== Starting ELM327 initialization (fastTiming=$fastTiming) ===")
+    fun initialize(headerHex: String = "7E1", fastTiming: Boolean = false, canFilterHex: String? = null) {
+        Log.d(TAG, "=== Starting ELM327 initialization (fastTiming=$fastTiming, canFilter=$canFilterHex) ===")
         Log.d(TAG, "Header: $headerHex")
         currentHeaderHex = null
+        currentFilterHex = null
 
         // Reset + basic setup per algorithm requirements for CVT ECU communication
         Log.d(TAG, "Sending ATZ (reset)...")
@@ -77,6 +96,14 @@ class Elm327Session(
         configureTiming(fastTiming)
 
         setHeader(headerHex)
+
+        if (!canFilterHex.isNullOrBlank()) {
+            runCatching {
+                setCanReceiveAddress(canFilterHex)
+            }.onFailure {
+                Log.w(TAG, "ATCRA not supported by adapter: ${it.message}")
+            }
+        }
 
         Log.d(TAG, "=== ELM327 initialization complete ===")
     }
@@ -119,27 +146,25 @@ class Elm327Session(
     }
 
     private fun readUntilPrompt(timeoutMs: Long): String {
-        Log.d(TAG, "Reading response with timeout ${timeoutMs}ms...")
         val start = System.currentTimeMillis()
         val sb = StringBuilder()
+        val buf = ByteArray(512)
 
         try {
             while (System.currentTimeMillis() - start < timeoutMs) {
-                if (input.available() > 0) {
-                    val buf = ByteArray(256)
-                    val read = input.read(buf)
+                val available = input.available()
+                if (available > 0) {
+                    val read = input.read(buf, 0, minOf(buf.size, available))
                     if (read == -1) break
 
                     val chunk = String(buf, 0, read, Charsets.US_ASCII)
-                    Log.d(TAG, "Read $read bytes: '$chunk'")
                     sb.append(chunk)
 
                     if (chunk.contains('>')) {
-                        Log.d(TAG, "Found prompt '>', stopping read")
                         break
                     }
                 } else {
-                    Thread.sleep(5)
+                    Thread.sleep(2)
                 }
             }
         } catch (e: Exception) {

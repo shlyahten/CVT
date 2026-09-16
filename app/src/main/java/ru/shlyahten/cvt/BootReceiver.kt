@@ -14,11 +14,23 @@ class BootReceiver : BroadcastReceiver() {
         private const val TAG = "CvtBootReceiver"
         const val ACTION_GLSX_ACCON = "com.glsx.boot.ACCON"
         const val ACTION_FYT_ACCON = "com.fyt.boot.ACCON"
+        const val ACTION_GLSX_ACCOFF = "com.glsx.boot.ACCOFF"
+        const val ACTION_FYT_ACCOFF = "com.fyt.boot.ACCOFF"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         Log.d(TAG, "Received broadcast action: $action")
+
+        if (action == ACTION_GLSX_ACCOFF || action == ACTION_FYT_ACCOFF || action == Intent.ACTION_SHUTDOWN) {
+            Log.i(TAG, "ACC OFF / shutdown received ($action). Stopping CvtOverlayService...")
+            runCatching {
+                CvtOverlayService.stop(context)
+            }.onFailure { t ->
+                Log.e(TAG, "Failed to stop service on ACCOFF", t)
+            }
+            return
+        }
 
         val settings = AppSettings.getInstance(context)
         if (!settings.isAutostartEnabled()) {

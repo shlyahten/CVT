@@ -70,6 +70,9 @@
                 <action android:name="com.ts.headunit.power.on" />
                 <action android:name="com.glsx.boot.ACCON" />
                 <action android:name="com.fyt.boot.ACCON" />
+                <action android:name="com.glsx.boot.ACCOFF" />
+                <action android:name="com.fyt.boot.ACCOFF" />
+                <action android:name="android.intent.action.ACTION_SHUTDOWN" />
             </intent-filter>
         </receiver>
     </application>

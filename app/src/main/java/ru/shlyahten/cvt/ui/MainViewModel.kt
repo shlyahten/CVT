@@ -66,6 +66,7 @@ data class UiState(
     val btStatus: ru.shlyahten.cvt.BtStatus = ru.shlyahten.cvt.BtStatus.DISCONNECTED,
     val fastTimingDesired: Boolean = true,
     val cacheAtshDesired: Boolean = true,
+    val canFilteringDesired: Boolean = true,
     val pollIntervalMs: Long = 1000L,
 )
 
@@ -112,6 +113,7 @@ class MainViewModel : ViewModel() {
         val savedTransparency = s.getOverlayTransparency()
         val savedFastTiming = s.isFastTimingEnabled()
         val savedCacheAtsh = s.isCacheAtshEnabled()
+        val savedCanFiltering = s.isCanFilteringEnabled()
         val savedPollInterval = s.getPollIntervalMs()
 
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -137,6 +139,7 @@ class MainViewModel : ViewModel() {
                 btStatus = app.btStatus.value,
                 fastTimingDesired = savedFastTiming,
                 cacheAtshDesired = savedCacheAtsh,
+                canFilteringDesired = savedCanFiltering,
                 pollIntervalMs = savedPollInterval,
             )
         }
@@ -276,6 +279,13 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             s.cacheAtshFlow.collectLatest { cacheAtsh ->
                 _state.update { it.copy(cacheAtshDesired = cacheAtsh) }
+            }
+        }
+
+        // Observe CAN filtering setting
+        viewModelScope.launch {
+            s.canFilteringFlow.collectLatest { canFilter ->
+                _state.update { it.copy(canFilteringDesired = canFilter) }
             }
         }
 
@@ -677,6 +687,12 @@ class MainViewModel : ViewModel() {
         settings?.setCacheAtshEnabled(enabled)
         _state.update { it.copy(cacheAtshDesired = enabled) }
         addLogEntry("ATSH caching ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setCanFilteringDesired(enabled: Boolean) {
+        settings?.setCanFilteringEnabled(enabled)
+        _state.update { it.copy(canFilteringDesired = enabled) }
+        addLogEntry("CAN hardware filtering ${if (enabled) "enabled" else "disabled"}")
     }
 
     fun setPollIntervalMs(intervalMs: Long) {

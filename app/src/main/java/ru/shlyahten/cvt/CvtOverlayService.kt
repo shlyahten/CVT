@@ -257,11 +257,12 @@ class CvtOverlayService : Service() {
                         updateNotificationText(getString(R.string.status_connecting))
                     }
 
-                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress (fastTiming=${settings.isFastTimingEnabled()}, cacheAtsh=${settings.isCacheAtshEnabled()})...")
+                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress (fastTiming=${settings.isFastTimingEnabled()}, cacheAtsh=${settings.isCacheAtshEnabled()}, canFiltering=${settings.isCanFilteringEnabled()})...")
                     val connectResult = repo.connect(
                         deviceAddress = targetAddress,
                         fastTiming = settings.isFastTimingEnabled(),
                         cacheAtsh = settings.isCacheAtshEnabled(),
+                        canFiltering = settings.isCanFilteringEnabled(),
                     )
                     if (connectResult.isFailure) {
                         val errMsg = connectResult.exceptionOrNull()?.message ?: "Connect failed"
@@ -692,6 +693,13 @@ class CvtOverlayService : Service() {
             settings.cacheAtshFlow.collectLatest { cacheAtsh ->
                 Log.d(TAG, "Cache ATSH preference changed: $cacheAtsh")
                 obdRepository?.setCacheAtsh(cacheAtsh)
+            }
+        }
+
+        serviceScope.launch {
+            settings.canFilteringFlow.collectLatest { canFiltering ->
+                Log.d(TAG, "CAN filtering preference changed: $canFiltering")
+                obdRepository?.setCanFiltering(canFiltering)
             }
         }
     }

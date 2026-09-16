@@ -193,6 +193,8 @@
     <string name="screen_main_fast_timing_desc">Aggressive ELM327 timing (AT AT2) and 100ms timeout (AT ST 19). Recommended for PIC18F25K80 and v1.5.</string>
     <string name="screen_main_cache_atsh_title">ATSH Header Caching</string>
     <string name="screen_main_cache_atsh_desc">Do not resend ATSH when header is unchanged. Saves ~40 ms per poll cycle.</string>
+    <string name="screen_main_can_filtering_title">CAN Hardware Filter (AT CRA)</string>
+    <string name="screen_main_can_filtering_desc">Filter out extraneous CAN bus traffic on adapter chip (7E9 only). Reduces MCU latency.</string>
     <string name="screen_main_poll_interval_title">Poll Interval</string>
     <string name="screen_main_poll_interval_fast">500 ms (Fast)</string>
     <string name="screen_main_poll_interval_normal">1 sec (Default)</string>

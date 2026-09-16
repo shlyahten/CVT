@@ -193,6 +193,8 @@
     <string name="screen_main_fast_timing_desc">Агрессивный тайминг ELM327 (AT AT2) и таймаут 100 мс (AT ST 19). Рекомендуется для чипов PIC18F25K80 и v1.5.</string>
     <string name="screen_main_cache_atsh_title">Кэширование заголовка ATSH</string>
     <string name="screen_main_cache_atsh_desc">Не отправлять повторно ATSH при неизменном заголовке. Экономит ~40 мс на запрос.</string>
+    <string name="screen_main_can_filtering_title">Аппаратная фильтрация CAN (AT CRA)</string>
+    <string name="screen_main_can_filtering_desc">Отсекает посторонний трафик CAN-шины на чипе адаптера (только 7E9), снижая задержку и нагрузку на контроллер.</string>
     <string name="screen_main_poll_interval_title">Интервал опроса</string>
     <string name="screen_main_poll_interval_fast">500 мс (Быстро)</string>
     <string name="screen_main_poll_interval_normal">1 сек (Стандарт)</string>

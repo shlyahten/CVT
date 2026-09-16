@@ -36,6 +36,7 @@ interface ObdRepository : Closeable {
         deviceAddress: String,
         fastTiming: Boolean = false,
         cacheAtsh: Boolean = true,
+        canFiltering: Boolean = true,
     ): Result<Unit>
 
     /**
@@ -68,6 +69,11 @@ interface ObdRepository : Closeable {
      * Update whether ATSH header caching is enabled.
      */
     fun setCacheAtsh(cacheAtsh: Boolean)
+
+    /**
+     * Update whether CAN hardware address filtering (AT CRA) is enabled.
+     */
+    fun setCanFiltering(canFiltering: Boolean)
 }
 
 /**
@@ -81,6 +87,12 @@ class ObdRepositoryImpl(
     private var session: Elm327Session? = null
     private var fastTimingEnabled: Boolean = false
     private var cacheAtshEnabled: Boolean = true
+    private var canFilteringEnabled: Boolean = true
+
+    private fun getResponseCanId(requestHeaderHex: String): String? {
+        val req = requestHeaderHex.toIntOrNull(16) ?: return null
+        return (req + 8).toString(16).uppercase().padStart(3, '0')
+    }
     
     override fun getBondedDevices(): List<BluetoothDevice> {
         val adapter = bluetoothAdapter ?: return emptyList()
@@ -93,9 +105,11 @@ class ObdRepositoryImpl(
         deviceAddress: String,
         fastTiming: Boolean,
         cacheAtsh: Boolean,
+        canFiltering: Boolean,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         fastTimingEnabled = fastTiming
         cacheAtshEnabled = cacheAtsh
+        canFilteringEnabled = canFiltering
         runCatching {
             val adapter = bluetoothAdapter ?: error("BluetoothAdapter is null")
             adapter.cancelDiscovery()
@@ -105,8 +119,9 @@ class ObdRepositoryImpl(
             val conn = client.connect(device)
             
             connection = conn
+            val filterId = if (canFiltering) getResponseCanId("7E1") else null
             session = Elm327Session(conn.input, conn.output).apply {
-                initialize(headerHex = "7E1", fastTiming = fastTiming)
+                initialize(headerHex = "7E1", fastTiming = fastTiming, canFilterHex = filterId)
             }
         }
     }
@@ -122,6 +137,18 @@ class ObdRepositoryImpl(
         cacheAtshEnabled = cacheAtsh
         if (!cacheAtsh) {
             session?.resetHeader()
+        }
+    }
+
+    override fun setCanFiltering(canFiltering: Boolean) {
+        canFilteringEnabled = canFiltering
+        session?.runCatching {
+            if (!canFiltering) {
+                setCanReceiveAddress(null)
+            } else {
+                val header = getCurrentHeader() ?: "7E1"
+                getResponseCanId(header)?.let { setCanReceiveAddress(it) }
+            }
         }
     }
     
@@ -147,8 +174,23 @@ class ObdRepositoryImpl(
             } else {
                 currentSession.sendExpectOk("ATSH${spec.headerHex}", timeoutMs = 800)
             }
+
+            // Ensure hardware CAN filter is configured
+            if (canFilteringEnabled) {
+                getResponseCanId(spec.headerHex)?.let { filterId ->
+                    runCatching { currentSession.setCanReceiveAddress(filterId) }
+                }
+            }
             
-            val response = currentSession.send(spec.modeAndPid, timeoutMs = 2000)
+            // In fast timing mode, request single ECU response to avoid idle bus wait (~15-25ms savings)
+            val cmd = if (fastTimingEnabled) "${spec.modeAndPid.trim()} 1" else spec.modeAndPid.trim()
+            var response = currentSession.send(cmd, timeoutMs = 2000)
+
+            // Fallback for non-compliant ELM clones that do not support the count parameter
+            if (fastTimingEnabled && response.response.isError && response.response.raw.contains("?")) {
+                Log.w("OBD", "Clone adapter rejected count parameter ('$cmd'). Falling back to '${spec.modeAndPid}'")
+                response = currentSession.send(spec.modeAndPid.trim(), timeoutMs = 2000)
+            }
             
             if (response.response.isNoData) {
                 Log.w("OBD", "NO DATA for ${spec.modeAndPid}. Raw: ${response.response.raw}")

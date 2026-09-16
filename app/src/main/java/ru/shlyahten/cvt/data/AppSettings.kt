@@ -39,6 +39,9 @@ class AppSettings(context: Context) {
     private val _pollIntervalFlow = MutableStateFlow(getPollIntervalMs())
     val pollIntervalFlow: StateFlow<Long> = _pollIntervalFlow.asStateFlow()
 
+    private val _canFilteringFlow = MutableStateFlow(isCanFilteringEnabled())
+    val canFilteringFlow: StateFlow<Boolean> = _canFilteringFlow.asStateFlow()
+
     fun getSelectedDeviceAddress(): String? =
         prefs.getString(KEY_DEVICE_ADDRESS, null)
 
@@ -180,6 +183,14 @@ class AppSettings(context: Context) {
         _cacheAtshFlow.value = enabled
     }
 
+    fun isCanFilteringEnabled(): Boolean =
+        prefs.getBoolean(KEY_CAN_FILTERING, true)
+
+    fun setCanFilteringEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CAN_FILTERING, enabled).apply()
+        _canFilteringFlow.value = enabled
+    }
+
     fun isOnboardingCompleted(): Boolean =
         prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
 
@@ -229,6 +240,7 @@ class AppSettings(context: Context) {
         private const val KEY_POLL_INTERVAL_MS = "pref_poll_interval_ms"
         private const val KEY_FAST_TIMING = "pref_fast_timing"
         private const val KEY_CACHE_ATSH = "pref_cache_atsh"
+        private const val KEY_CAN_FILTERING = "pref_can_filtering"
         private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
         private const val KEY_LAST_OIL_DEGRADATION = "pref_last_oil_degradation"
         private const val KEY_OIL_DEGRADATION_HISTORY = "pref_oil_degradation_history"

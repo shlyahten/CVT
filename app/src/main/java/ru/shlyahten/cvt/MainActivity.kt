@@ -1262,6 +1262,34 @@ private fun ControlsAndSettingsSection(
                 )
             }
 
+            // CAN Hardware Filtering Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_can_filtering_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_can_filtering_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.canFilteringDesired,
+                    onCheckedChange = { vm.setCanFilteringDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
             // Poll Interval Selection
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
