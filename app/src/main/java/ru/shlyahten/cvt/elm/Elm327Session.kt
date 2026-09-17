@@ -58,8 +58,9 @@ class Elm327Session(
 
     fun configureTiming(fastTiming: Boolean) {
         if (fastTiming) {
-            Log.d(TAG, "Configuring fast timing: ATAT2 (aggressive) + ATST19 (100ms timeout)...")
-            sendExpectOk("ATAT2")
+            // Use ATAT1 instead of ATAT2: ATAT2 aggressively truncates multi-frame ISO-TP CAN responses (PID 2103)
+            Log.d(TAG, "Configuring fast timing: ATAT1 (adaptive) + ATST19 (100ms timeout)...")
+            sendExpectOk("ATAT1")
             sendExpectOk("ATST19")
         } else {
             Log.d(TAG, "Configuring standard timing: ATAT1 (standard) + ATST32 (200ms timeout)...")
@@ -68,8 +69,39 @@ class Elm327Session(
         }
     }
 
-    fun initialize(headerHex: String = "7E1", fastTiming: Boolean = false, canFilterHex: String? = null) {
-        Log.d(TAG, "=== Starting ELM327 initialization (fastTiming=$fastTiming, canFilter=$canFilterHex) ===")
+    fun configureCompression(compress: Boolean) {
+        if (compress) {
+            Log.d(TAG, "Enabling ELM327 data compression (ATS0 - spaces off)...")
+            sendExpectOk("ATS0")
+        } else {
+            Log.d(TAG, "Disabling ELM327 data compression (ATS1 - spaces on)...")
+            sendExpectOk("ATS1")
+        }
+    }
+
+    fun configureKline(optimization: Boolean, longMessages: Boolean) {
+        if (optimization) {
+            Log.d(TAG, "Configuring K-Line optimizations: ATSW20 + ATIB10...")
+            runCatching { sendExpectOk("ATSW20", timeoutMs = 800) }
+            runCatching { sendExpectOk("ATIB10", timeoutMs = 800) }
+        }
+        if (longMessages) {
+            Log.d(TAG, "Enabling long K-Line messages (ATAL)...")
+            runCatching { sendExpectOk("ATAL", timeoutMs = 800) }
+        } else {
+            runCatching { sendExpectOk("ATNL", timeoutMs = 800) }
+        }
+    }
+
+    fun initialize(
+        headerHex: String = "7E1",
+        fastTiming: Boolean = false,
+        canFilterHex: String? = null,
+        elmCompression: Boolean = true,
+        klineOptimization: Boolean = false,
+        klineLongMessages: Boolean = false,
+    ) {
+        Log.d(TAG, "=== Starting ELM327 initialization (fastTiming=$fastTiming, canFilter=$canFilterHex, compression=$elmCompression, klineOpt=$klineOptimization, klineLong=$klineLongMessages) ===")
         Log.d(TAG, "Header: $headerHex")
         currentHeaderHex = null
         currentFilterHex = null
@@ -84,8 +116,13 @@ class Elm327Session(
         Log.d(TAG, "Sending ATL0 (linefeeds off)...")
         sendExpectOk("ATL0")
 
-        Log.d(TAG, "Sending ATS0 (spaces off)...")
-        sendExpectOk("ATS0")
+        if (elmCompression) {
+            Log.d(TAG, "Sending ATS0 (spaces off)...")
+            sendExpectOk("ATS0")
+        } else {
+            Log.d(TAG, "Sending ATS1 (spaces on)...")
+            sendExpectOk("ATS1")
+        }
 
         Log.d(TAG, "Sending ATH1 (headers on)...")
         sendExpectOk("ATH1")
@@ -94,6 +131,7 @@ class Elm327Session(
         sendExpectOk("ATSP6") // ISO 15765-4 CAN (11bit 500k)
 
         configureTiming(fastTiming)
+        configureKline(klineOptimization, klineLongMessages)
 
         setHeader(headerHex)
 

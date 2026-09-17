@@ -64,9 +64,12 @@ data class UiState(
     val errorCount: Int = 0,
     val lastError: String? = null,
     val btStatus: ru.shlyahten.cvt.BtStatus = ru.shlyahten.cvt.BtStatus.DISCONNECTED,
-    val fastTimingDesired: Boolean = true,
+    val fastTimingDesired: Boolean = false,
     val cacheAtshDesired: Boolean = true,
     val canFilteringDesired: Boolean = true,
+    val elmCompressionDesired: Boolean = true,
+    val klineOptimizationDesired: Boolean = false,
+    val klineLongMessagesDesired: Boolean = false,
     val pollIntervalMs: Long = 1000L,
 )
 
@@ -114,6 +117,9 @@ class MainViewModel : ViewModel() {
         val savedFastTiming = s.isFastTimingEnabled()
         val savedCacheAtsh = s.isCacheAtshEnabled()
         val savedCanFiltering = s.isCanFilteringEnabled()
+        val savedElmCompression = s.isElmCompressionEnabled()
+        val savedKlineOpt = s.isKlineOptimizationEnabled()
+        val savedKlineLong = s.isKlineLongMessagesEnabled()
         val savedPollInterval = s.getPollIntervalMs()
 
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -140,6 +146,9 @@ class MainViewModel : ViewModel() {
                 fastTimingDesired = savedFastTiming,
                 cacheAtshDesired = savedCacheAtsh,
                 canFilteringDesired = savedCanFiltering,
+                elmCompressionDesired = savedElmCompression,
+                klineOptimizationDesired = savedKlineOpt,
+                klineLongMessagesDesired = savedKlineLong,
                 pollIntervalMs = savedPollInterval,
             )
         }
@@ -286,6 +295,27 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             s.canFilteringFlow.collectLatest { canFilter ->
                 _state.update { it.copy(canFilteringDesired = canFilter) }
+            }
+        }
+
+        // Observe ELM compression setting
+        viewModelScope.launch {
+            s.elmCompressionFlow.collectLatest { compression ->
+                _state.update { it.copy(elmCompressionDesired = compression) }
+            }
+        }
+
+        // Observe K-Line optimization setting
+        viewModelScope.launch {
+            s.klineOptimizationFlow.collectLatest { klineOpt ->
+                _state.update { it.copy(klineOptimizationDesired = klineOpt) }
+            }
+        }
+
+        // Observe K-Line long messages setting
+        viewModelScope.launch {
+            s.klineLongMessagesFlow.collectLatest { klineLong ->
+                _state.update { it.copy(klineLongMessagesDesired = klineLong) }
             }
         }
 
@@ -693,6 +723,24 @@ class MainViewModel : ViewModel() {
         settings?.setCanFilteringEnabled(enabled)
         _state.update { it.copy(canFilteringDesired = enabled) }
         addLogEntry("CAN hardware filtering ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setElmCompressionDesired(enabled: Boolean) {
+        settings?.setElmCompressionEnabled(enabled)
+        _state.update { it.copy(elmCompressionDesired = enabled) }
+        addLogEntry("ELM327 data compression ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setKlineOptimizationDesired(enabled: Boolean) {
+        settings?.setKlineOptimizationEnabled(enabled)
+        _state.update { it.copy(klineOptimizationDesired = enabled) }
+        addLogEntry("K-Line optimization ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setKlineLongMessagesDesired(enabled: Boolean) {
+        settings?.setKlineLongMessagesEnabled(enabled)
+        _state.update { it.copy(klineLongMessagesDesired = enabled) }
+        addLogEntry("K-Line long messages ${if (enabled) "enabled" else "disabled"}")
     }
 
     fun setPollIntervalMs(intervalMs: Long) {

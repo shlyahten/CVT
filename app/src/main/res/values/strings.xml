@@ -190,7 +190,13 @@
     <!-- Connection Optimization Settings -->
     <string name="screen_main_connection_opt_title">Connection &amp; Speed Optimization</string>
     <string name="screen_main_fast_timing_title">Fast Protocol (AT AT2)</string>
-    <string name="screen_main_fast_timing_desc">Aggressive ELM327 timing (AT AT2) and 100ms timeout (AT ST 19). Recommended for PIC18F25K80 and v1.5.</string>
+    <string name="screen_main_fast_timing_desc">Aggressive ELM327 timing (AT AT2) and 100ms timeout (AT ST 19). Warning: may corrupt multi-frame responses on some adapters.</string>
+    <string name="screen_main_elm_compression_title">ELM327 Data Compression</string>
+    <string name="screen_main_elm_compression_desc">Removes spaces in response (AT S0). May improve update rate, but incompatible with some clone adapters.</string>
+    <string name="screen_main_kline_optimization_title">K-Line Optimization</string>
+    <string name="screen_main_kline_optimization_desc">May improve update rate in K-Line mode when using a high-quality ELM327 adapter.</string>
+    <string name="screen_main_kline_long_messages_title">Long K-Line Messages</string>
+    <string name="screen_main_kline_long_messages_desc">May improve update rate in K-Line mode (AT AL). Only enable if using a genuine OBDLink adapter.</string>
     <string name="screen_main_cache_atsh_title">ATSH Header Caching</string>
     <string name="screen_main_cache_atsh_desc">Do not resend ATSH when header is unchanged. Saves ~40 ms per poll cycle.</string>
     <string name="screen_main_can_filtering_title">CAN Hardware Filter (AT CRA)</string>

@@ -190,7 +190,13 @@
     <!-- Connection Optimization Settings -->
     <string name="screen_main_connection_opt_title">Оптимизация связи с адаптером</string>
     <string name="screen_main_fast_timing_title">Быстрый протокол (AT AT2)</string>
-    <string name="screen_main_fast_timing_desc">Агрессивный тайминг ELM327 (AT AT2) и таймаут 100 мс (AT ST 19). Рекомендуется для чипов PIC18F25K80 и v1.5.</string>
+    <string name="screen_main_fast_timing_desc">Агрессивный тайминг ELM327 (AT AT2) и таймаут 100 мс (AT ST 19). Внимание: может искажать многокадровые ответы на некоторых адаптерах.</string>
+    <string name="screen_main_elm_compression_title">Сжатие данных ELM327</string>
+    <string name="screen_main_elm_compression_desc">Устранение пробелов в ответе (AT S0). Может улучшить скорость обновления данных, однако несовместимо с некоторыми адаптерами.</string>
+    <string name="screen_main_kline_optimization_title">Оптимизация K-Line</string>
+    <string name="screen_main_kline_optimization_desc">Может улучшить скорость обновления данных в режиме K-Line при использовании качественного адаптера ELM327.</string>
+    <string name="screen_main_kline_long_messages_title">Длинные сообщения K-Line</string>
+    <string name="screen_main_kline_long_messages_desc">Может улучшить скорость обновления данных в режиме K-Line. Включайте только если используете оригинальный адаптер OBDLink.</string>
     <string name="screen_main_cache_atsh_title">Кэширование заголовка ATSH</string>
     <string name="screen_main_cache_atsh_desc">Не отправлять повторно ATSH при неизменном заголовке. Экономит ~40 мс на запрос.</string>
     <string name="screen_main_can_filtering_title">Аппаратная фильтрация CAN (AT CRA)</string>

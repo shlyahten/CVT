@@ -42,6 +42,15 @@ class AppSettings(context: Context) {
     private val _canFilteringFlow = MutableStateFlow(isCanFilteringEnabled())
     val canFilteringFlow: StateFlow<Boolean> = _canFilteringFlow.asStateFlow()
 
+    private val _elmCompressionFlow = MutableStateFlow(isElmCompressionEnabled())
+    val elmCompressionFlow: StateFlow<Boolean> = _elmCompressionFlow.asStateFlow()
+
+    private val _klineOptimizationFlow = MutableStateFlow(isKlineOptimizationEnabled())
+    val klineOptimizationFlow: StateFlow<Boolean> = _klineOptimizationFlow.asStateFlow()
+
+    private val _klineLongMessagesFlow = MutableStateFlow(isKlineLongMessagesEnabled())
+    val klineLongMessagesFlow: StateFlow<Boolean> = _klineLongMessagesFlow.asStateFlow()
+
     fun getSelectedDeviceAddress(): String? =
         prefs.getString(KEY_DEVICE_ADDRESS, null)
 
@@ -168,7 +177,7 @@ class AppSettings(context: Context) {
     }
 
     fun isFastTimingEnabled(): Boolean =
-        prefs.getBoolean(KEY_FAST_TIMING, true)
+        prefs.getBoolean(KEY_FAST_TIMING, false)
 
     fun setFastTimingEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_FAST_TIMING, enabled).apply()
@@ -189,6 +198,30 @@ class AppSettings(context: Context) {
     fun setCanFilteringEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_CAN_FILTERING, enabled).apply()
         _canFilteringFlow.value = enabled
+    }
+
+    fun isElmCompressionEnabled(): Boolean =
+        prefs.getBoolean(KEY_ELM_COMPRESSION, true)
+
+    fun setElmCompressionEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ELM_COMPRESSION, enabled).apply()
+        _elmCompressionFlow.value = enabled
+    }
+
+    fun isKlineOptimizationEnabled(): Boolean =
+        prefs.getBoolean(KEY_KLINE_OPTIMIZATION, false)
+
+    fun setKlineOptimizationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KLINE_OPTIMIZATION, enabled).apply()
+        _klineOptimizationFlow.value = enabled
+    }
+
+    fun isKlineLongMessagesEnabled(): Boolean =
+        prefs.getBoolean(KEY_KLINE_LONG_MESSAGES, false)
+
+    fun setKlineLongMessagesEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KLINE_LONG_MESSAGES, enabled).apply()
+        _klineLongMessagesFlow.value = enabled
     }
 
     fun isOnboardingCompleted(): Boolean =
@@ -241,6 +274,9 @@ class AppSettings(context: Context) {
         private const val KEY_FAST_TIMING = "pref_fast_timing"
         private const val KEY_CACHE_ATSH = "pref_cache_atsh"
         private const val KEY_CAN_FILTERING = "pref_can_filtering"
+        private const val KEY_ELM_COMPRESSION = "pref_elm_compression"
+        private const val KEY_KLINE_OPTIMIZATION = "pref_kline_optimization"
+        private const val KEY_KLINE_LONG_MESSAGES = "pref_kline_long_messages"
         private const val KEY_ONBOARDING_COMPLETED = "pref_onboarding_completed"
         private const val KEY_LAST_OIL_DEGRADATION = "pref_last_oil_degradation"
         private const val KEY_OIL_DEGRADATION_HISTORY = "pref_oil_degradation_history"

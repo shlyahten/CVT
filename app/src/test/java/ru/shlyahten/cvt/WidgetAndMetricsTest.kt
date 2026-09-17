@@ -19,6 +19,10 @@ class WidgetAndMetricsTest {
         assertEquals(0, state.errorCount)
         assertNull(state.lastError)
         assertEquals(BtStatus.DISCONNECTED, state.btStatus)
+        assertEquals(false, state.fastTimingDesired)
+        assertEquals(true, state.elmCompressionDesired)
+        assertEquals(false, state.klineOptimizationDesired)
+        assertEquals(false, state.klineLongMessagesDesired)
     }
 
     @Test
@@ -41,10 +45,19 @@ class WidgetAndMetricsTest {
     @Test
     fun testWidgetTextOutputOnConnectedVsDisconnectedOrError() {
         // Requirements:
-        // При потере связи или ошибки вывод - - в виджете
+        // После потери соединения или ошибки, оставить в виджете последние данные по температуре с полупрозрачным шрифтом и красным индикатором ошибки связи.
         // Убрать слово "CVT" из виджета
-        fun formatWidgetText(btStatus: BtStatus, temp: Double?, formula: CvtTempFormula): String {
-            return if (btStatus == BtStatus.CONNECTED && temp != null) {
+        fun formatWidgetDisplay(
+            btStatus: BtStatus,
+            currentTemp: Double?,
+            lastKnownTemp: Double?,
+            formula: CvtTempFormula
+        ): Pair<String, Float> {
+            val temp = currentTemp ?: lastKnownTemp
+            val isConnected = btStatus == BtStatus.CONNECTED
+            val alpha = if (isConnected && temp != null) 1.0f else 0.5f
+
+            val text = if (temp != null) {
                 if (formula == CvtTempFormula.RawCount) {
                     "${temp.toInt()} cnt"
                 } else {
@@ -53,26 +66,38 @@ class WidgetAndMetricsTest {
             } else {
                 "--"
             }
+            return text to alpha
         }
 
-        // When connected with valid temperature
-        assertEquals("75.4°C", formatWidgetText(BtStatus.CONNECTED, 75.4, CvtTempFormula.Temp1))
-        assertEquals("80 cnt", formatWidgetText(BtStatus.CONNECTED, 80.0, CvtTempFormula.RawCount))
+        // When connected with valid temperature: 1.0f alpha
+        val (connectedText, connectedAlpha) = formatWidgetDisplay(BtStatus.CONNECTED, 75.4, null, CvtTempFormula.Temp1)
+        assertEquals("75.4°C", connectedText)
+        assertEquals(1.0f, connectedAlpha, 0.01f)
 
-        // When disconnected
-        assertEquals("--", formatWidgetText(BtStatus.DISCONNECTED, 75.4, CvtTempFormula.Temp1))
-        assertEquals("--", formatWidgetText(BtStatus.DISCONNECTED, null, CvtTempFormula.Temp1))
+        // When disconnected after having received 75.4°C: retains 75.4°C with 0.5f alpha
+        val (disconnWithLastText, disconnWithLastAlpha) = formatWidgetDisplay(BtStatus.DISCONNECTED, null, 75.4, CvtTempFormula.Temp1)
+        assertEquals("75.4°C", disconnWithLastText)
+        assertEquals(0.5f, disconnWithLastAlpha, 0.01f)
 
-        // When connecting
-        assertEquals("--", formatWidgetText(BtStatus.CONNECTING, 75.4, CvtTempFormula.Temp1))
+        // When in error state after having received 75.4°C: retains 75.4°C with 0.5f alpha
+        val (errorWithLastText, errorWithLastAlpha) = formatWidgetDisplay(BtStatus.ERROR, null, 75.4, CvtTempFormula.Temp1)
+        assertEquals("75.4°C", errorWithLastText)
+        assertEquals(0.5f, errorWithLastAlpha, 0.01f)
 
-        // When in error state
-        assertEquals("--", formatWidgetText(BtStatus.ERROR, 75.4, CvtTempFormula.Temp1))
-        assertEquals("--", formatWidgetText(BtStatus.ERROR, null, CvtTempFormula.Temp1))
+        // When disconnected and no data was ever received: "--" with 0.5f alpha
+        val (disconnNoDataText, disconnNoDataAlpha) = formatWidgetDisplay(BtStatus.DISCONNECTED, null, null, CvtTempFormula.Temp1)
+        assertEquals("--", disconnNoDataText)
+        assertEquals(0.5f, disconnNoDataAlpha, 0.01f)
+
+        // When in error state and no data was ever received: "--" with 0.5f alpha
+        val (errorNoDataText, errorNoDataAlpha) = formatWidgetDisplay(BtStatus.ERROR, null, null, CvtTempFormula.Temp1)
+        assertEquals("--", errorNoDataText)
+        assertEquals(0.5f, errorNoDataAlpha, 0.01f)
 
         // Verify "CVT" is NOT in any widget output
-        assertTrue(!formatWidgetText(BtStatus.CONNECTED, 75.4, CvtTempFormula.Temp1).contains("CVT"))
-        assertTrue(!formatWidgetText(BtStatus.ERROR, null, CvtTempFormula.Temp1).contains("CVT"))
+        assertTrue(!formatWidgetDisplay(BtStatus.CONNECTED, 75.4, null, CvtTempFormula.Temp1).first.contains("CVT"))
+        assertTrue(!formatWidgetDisplay(BtStatus.ERROR, null, 75.4, CvtTempFormula.Temp1).first.contains("CVT"))
+        assertTrue(!formatWidgetDisplay(BtStatus.ERROR, null, null, CvtTempFormula.Temp1).first.contains("CVT"))
     }
 
     @Test

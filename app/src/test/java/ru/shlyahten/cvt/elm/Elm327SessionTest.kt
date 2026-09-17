@@ -101,7 +101,7 @@ class Elm327SessionTest {
     }
 
     @Test
-    fun `configureTiming sends ATAT2 and ATST19 when fastTiming is true`() {
+    fun `configureTiming sends ATAT1 and ATST19 when fastTiming is true`() {
         val simulatedInput = SimulatedElmStream()
         val recordedOutput = object : ByteArrayOutputStream() {
             override fun write(b: ByteArray, off: Int, len: Int) {
@@ -114,7 +114,7 @@ class Elm327SessionTest {
 
         session.configureTiming(fastTiming = true)
         val commands = recordedOutput.toString(Charsets.US_ASCII.name())
-        assertEquals("ATAT2\rATST19\r", commands)
+        assertEquals("ATAT1\rATST19\r", commands)
     }
 
     @Test
@@ -132,6 +132,47 @@ class Elm327SessionTest {
         session.configureTiming(fastTiming = false)
         val commands = recordedOutput.toString(Charsets.US_ASCII.name())
         assertEquals("ATAT1\rATST32\r", commands)
+    }
+
+    @Test
+    fun `configureCompression sends ATS0 when true and ATS1 when false`() {
+        val simulatedInput = SimulatedElmStream()
+        val recordedOutput = object : ByteArrayOutputStream() {
+            override fun write(b: ByteArray, off: Int, len: Int) {
+                super.write(b, off, len)
+                simulatedInput.feedResponse("OK\r\n>")
+            }
+        }
+
+        val session = Elm327Session(simulatedInput, recordedOutput)
+
+        session.configureCompression(compress = true)
+        assertEquals("ATS0\r", recordedOutput.toString(Charsets.US_ASCII.name()))
+
+        recordedOutput.reset()
+        session.configureCompression(compress = false)
+        assertEquals("ATS1\r", recordedOutput.toString(Charsets.US_ASCII.name()))
+    }
+
+    @Test
+    fun `configureKline sends optimization and long message commands`() {
+        val simulatedInput = SimulatedElmStream()
+        val recordedOutput = object : ByteArrayOutputStream() {
+            override fun write(b: ByteArray, off: Int, len: Int) {
+                super.write(b, off, len)
+                simulatedInput.feedResponse("OK\r\n>")
+            }
+        }
+
+        val session = Elm327Session(simulatedInput, recordedOutput)
+
+        session.configureKline(optimization = true, longMessages = true)
+        val commands = recordedOutput.toString(Charsets.US_ASCII.name())
+        assertEquals("ATSW20\rATIB10\rATAL\r", commands)
+
+        recordedOutput.reset()
+        session.configureKline(optimization = false, longMessages = false)
+        assertEquals("ATNL\r", recordedOutput.toString(Charsets.US_ASCII.name()))
     }
 
     @Test

@@ -37,6 +37,9 @@ interface ObdRepository : Closeable {
         fastTiming: Boolean = false,
         cacheAtsh: Boolean = true,
         canFiltering: Boolean = true,
+        elmCompression: Boolean = true,
+        klineOptimization: Boolean = false,
+        klineLongMessages: Boolean = false,
     ): Result<Unit>
 
     /**
@@ -61,7 +64,7 @@ interface ObdRepository : Closeable {
     suspend fun queryPid(spec: PidSpec): Result<Double>
 
     /**
-     * Dynamically update fast timing (AT AT2/AT AT1) on active session.
+     * Dynamically update fast timing on active session.
      */
     fun updateFastTiming(fastTiming: Boolean)
 
@@ -74,6 +77,16 @@ interface ObdRepository : Closeable {
      * Update whether CAN hardware address filtering (AT CRA) is enabled.
      */
     fun setCanFiltering(canFiltering: Boolean)
+
+    /**
+     * Update whether ELM327 data compression (ATS0/ATS1) is enabled.
+     */
+    fun setElmCompression(enabled: Boolean)
+
+    /**
+     * Update K-Line optimization settings.
+     */
+    fun setKlineOptimization(optimization: Boolean, longMessages: Boolean)
 }
 
 /**
@@ -88,6 +101,9 @@ class ObdRepositoryImpl(
     private var fastTimingEnabled: Boolean = false
     private var cacheAtshEnabled: Boolean = true
     private var canFilteringEnabled: Boolean = true
+    private var elmCompressionEnabled: Boolean = true
+    private var klineOptimizationEnabled: Boolean = false
+    private var klineLongMessagesEnabled: Boolean = false
 
     private fun getResponseCanId(requestHeaderHex: String): String? {
         val req = requestHeaderHex.toIntOrNull(16) ?: return null
@@ -106,10 +122,16 @@ class ObdRepositoryImpl(
         fastTiming: Boolean,
         cacheAtsh: Boolean,
         canFiltering: Boolean,
+        elmCompression: Boolean,
+        klineOptimization: Boolean,
+        klineLongMessages: Boolean,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         fastTimingEnabled = fastTiming
         cacheAtshEnabled = cacheAtsh
         canFilteringEnabled = canFiltering
+        elmCompressionEnabled = elmCompression
+        klineOptimizationEnabled = klineOptimization
+        klineLongMessagesEnabled = klineLongMessages
         runCatching {
             val adapter = bluetoothAdapter ?: error("BluetoothAdapter is null")
             adapter.cancelDiscovery()
@@ -121,7 +143,14 @@ class ObdRepositoryImpl(
             connection = conn
             val filterId = if (canFiltering) getResponseCanId("7E1") else null
             session = Elm327Session(conn.input, conn.output).apply {
-                initialize(headerHex = "7E1", fastTiming = fastTiming, canFilterHex = filterId)
+                initialize(
+                    headerHex = "7E1",
+                    fastTiming = fastTiming,
+                    canFilterHex = filterId,
+                    elmCompression = elmCompression,
+                    klineOptimization = klineOptimization,
+                    klineLongMessages = klineLongMessages,
+                )
             }
         }
     }
@@ -149,6 +178,21 @@ class ObdRepositoryImpl(
                 val header = getCurrentHeader() ?: "7E1"
                 getResponseCanId(header)?.let { setCanReceiveAddress(it) }
             }
+        }
+    }
+
+    override fun setElmCompression(enabled: Boolean) {
+        elmCompressionEnabled = enabled
+        session?.runCatching {
+            configureCompression(enabled)
+        }
+    }
+
+    override fun setKlineOptimization(optimization: Boolean, longMessages: Boolean) {
+        klineOptimizationEnabled = optimization
+        klineLongMessagesEnabled = longMessages
+        session?.runCatching {
+            configureKline(optimization, longMessages)
         }
     }
     
@@ -182,15 +226,9 @@ class ObdRepositoryImpl(
                 }
             }
             
-            // In fast timing mode, request single ECU response to avoid idle bus wait (~15-25ms savings)
-            val cmd = if (fastTimingEnabled) "${spec.modeAndPid.trim()} 1" else spec.modeAndPid.trim()
-            var response = currentSession.send(cmd, timeoutMs = 2000)
-
-            // Fallback for non-compliant ELM clones that do not support the count parameter
-            if (fastTimingEnabled && response.response.isError && response.response.raw.contains("?")) {
-                Log.w("OBD", "Clone adapter rejected count parameter ('$cmd'). Falling back to '${spec.modeAndPid}'")
-                response = currentSession.send(spec.modeAndPid.trim(), timeoutMs = 2000)
-            }
+            // Do not append " 1" because it prematurely truncates multi-frame ISO-TP CAN responses (PID 2103)
+            val cmd = spec.modeAndPid.trim()
+            val response = currentSession.send(cmd, timeoutMs = 2000)
             
             if (response.response.isNoData) {
                 Log.w("OBD", "NO DATA for ${spec.modeAndPid}. Raw: ${response.response.raw}")

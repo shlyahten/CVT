@@ -1290,6 +1290,90 @@ private fun ControlsAndSettingsSection(
                 )
             }
 
+            // ELM327 Data Compression Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_elm_compression_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_elm_compression_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.elmCompressionDesired,
+                    onCheckedChange = { vm.setElmCompressionDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // K-Line Optimization Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_kline_optimization_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_kline_optimization_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.klineOptimizationDesired,
+                    onCheckedChange = { vm.setKlineOptimizationDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // K-Line Long Messages Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_kline_long_messages_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_kline_long_messages_desc),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.klineLongMessagesDesired,
+                    onCheckedChange = { vm.setKlineLongMessagesDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoCyan,
+                        checkedTrackColor = AutoCyan.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
             // Poll Interval Selection
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(

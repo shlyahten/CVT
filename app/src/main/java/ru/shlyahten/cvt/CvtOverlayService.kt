@@ -132,6 +132,7 @@ class CvtOverlayService : Service() {
     private var tempTextView: TextView? = null
     private var statusDotView: View? = null
     private var overlayParams: WindowManager.LayoutParams? = null
+    private var lastKnownTemp: Double? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -257,12 +258,15 @@ class CvtOverlayService : Service() {
                         updateNotificationText(getString(R.string.status_connecting))
                     }
 
-                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress (fastTiming=${settings.isFastTimingEnabled()}, cacheAtsh=${settings.isCacheAtshEnabled()}, canFiltering=${settings.isCanFilteringEnabled()})...")
+                    Log.d(TAG, "Connecting to OBD adapter at $targetAddress (fastTiming=${settings.isFastTimingEnabled()}, cacheAtsh=${settings.isCacheAtshEnabled()}, canFiltering=${settings.isCanFilteringEnabled()}, elmCompression=${settings.isElmCompressionEnabled()})...")
                     val connectResult = repo.connect(
                         deviceAddress = targetAddress,
                         fastTiming = settings.isFastTimingEnabled(),
                         cacheAtsh = settings.isCacheAtshEnabled(),
                         canFiltering = settings.isCanFilteringEnabled(),
+                        elmCompression = settings.isElmCompressionEnabled(),
+                        klineOptimization = settings.isKlineOptimizationEnabled(),
+                        klineLongMessages = settings.isKlineLongMessagesEnabled(),
                     )
                     if (connectResult.isFailure) {
                         val errMsg = connectResult.exceptionOrNull()?.message ?: "Connect failed"
@@ -560,6 +564,10 @@ class CvtOverlayService : Service() {
         val tv = tempTextView ?: return
         val dot = statusDotView ?: return
 
+        if (temp != null) {
+            lastKnownTemp = temp
+        }
+
         // 1. Bluetooth Connection Status Circle (Green, Yellow, Red)
         // зеленый - ок, желтый - соединение, красный - ошибка
         val dotColor = when (btStatus) {
@@ -579,27 +587,52 @@ class CvtOverlayService : Service() {
             dot.background = d
         }
 
-        // 2. Display text: "--" on error or lost connection or null temp; temperature when connected
-        if (btStatus == BtStatus.CONNECTED && temp != null) {
-            val formula = settings.getFormula()
+        val currentOrLastTemp = temp ?: lastKnownTemp
+        val formula = settings.getFormula()
+
+        // 2. Display text and transparency:
+        // После потери соединения или ошибки, оставить в виджете последние данные по температуре
+        // с полупрозрачным шрифтом и красным индикатором ошибки связи.
+        if (btStatus == BtStatus.CONNECTED && currentOrLastTemp != null) {
+            tv.alpha = 1.0f // Normal full opacity font when connected
             val displayStr = if (formula == CvtTempFormula.RawCount) {
-                "${temp.toInt()} cnt"
+                "${currentOrLastTemp.toInt()} cnt"
             } else {
-                String.format(java.util.Locale.US, "%.1f°C", temp)
+                String.format(java.util.Locale.US, "%.1f°C", currentOrLastTemp)
             }
             tv.text = displayStr
 
             val textColor = when {
                 formula == CvtTempFormula.RawCount -> Color.WHITE
-                temp < 50.0 -> Color.parseColor("#38BDF8") // Cold (Ice Blue)
-                temp in 50.0..89.9 -> Color.parseColor("#22C55E") // Optimal (Emerald Green)
-                temp in 90.0..99.9 -> Color.parseColor("#F59E0B") // Warm / Elevated (Amber)
+                currentOrLastTemp < 50.0 -> Color.parseColor("#38BDF8") // Cold (Ice Blue)
+                currentOrLastTemp in 50.0..89.9 -> Color.parseColor("#22C55E") // Optimal (Emerald Green)
+                currentOrLastTemp in 90.0..99.9 -> Color.parseColor("#F59E0B") // Warm / Elevated (Amber)
                 else -> Color.parseColor("#EF4444") // Hot / Overheat (Crimson)
             }
             tv.setTextColor(textColor)
         } else {
-            tv.text = "--"
-            tv.setTextColor(Color.parseColor("#94A3B8"))
+            // Error, disconnected or connecting: show semi-transparent font with last temperature
+            tv.alpha = 0.5f
+            if (currentOrLastTemp != null) {
+                val displayStr = if (formula == CvtTempFormula.RawCount) {
+                    "${currentOrLastTemp.toInt()} cnt"
+                } else {
+                    String.format(java.util.Locale.US, "%.1f°C", currentOrLastTemp)
+                }
+                tv.text = displayStr
+
+                val textColor = when {
+                    formula == CvtTempFormula.RawCount -> Color.WHITE
+                    currentOrLastTemp < 50.0 -> Color.parseColor("#38BDF8")
+                    currentOrLastTemp in 50.0..89.9 -> Color.parseColor("#22C55E")
+                    currentOrLastTemp in 90.0..99.9 -> Color.parseColor("#F59E0B")
+                    else -> Color.parseColor("#EF4444")
+                }
+                tv.setTextColor(textColor)
+            } else {
+                tv.text = "--"
+                tv.setTextColor(Color.parseColor("#94A3B8"))
+            }
         }
     }
 
@@ -700,6 +733,28 @@ class CvtOverlayService : Service() {
             settings.canFilteringFlow.collectLatest { canFiltering ->
                 Log.d(TAG, "CAN filtering preference changed: $canFiltering")
                 obdRepository?.setCanFiltering(canFiltering)
+            }
+        }
+
+        serviceScope.launch {
+            settings.formulaFlow.collectLatest {
+                updateOverlayUi(app.btStatus.value, app.cvtTemp1C.value)
+            }
+        }
+
+        serviceScope.launch {
+            settings.elmCompressionFlow.collectLatest { compression ->
+                Log.d(TAG, "ELM compression preference changed: $compression")
+                obdRepository?.setElmCompression(compression)
+            }
+        }
+
+        serviceScope.launch {
+            combine(settings.klineOptimizationFlow, settings.klineLongMessagesFlow) { opt, longMsg ->
+                Pair(opt, longMsg)
+            }.collectLatest { (opt, longMsg) ->
+                Log.d(TAG, "K-Line preferences changed: opt=$opt, longMsg=$longMsg")
+                obdRepository?.setKlineOptimization(opt, longMsg)
             }
         }
     }
