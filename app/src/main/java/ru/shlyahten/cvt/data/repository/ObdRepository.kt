@@ -32,7 +32,15 @@ interface ObdRepository : Closeable {
     /**
      * Connect to an OBD device via Bluetooth.
      */
-    suspend fun connect(deviceAddress: String): Result<Unit>
+    suspend fun connect(
+        deviceAddress: String,
+        fastTiming: Boolean = false,
+        cacheAtsh: Boolean = true,
+        canFiltering: Boolean = true,
+        elmCompression: Boolean = true,
+        klineOptimization: Boolean = false,
+        klineLongMessages: Boolean = false,
+    ): Result<Unit>
 
     /**
      * Disconnect from the current OBD session.
@@ -54,6 +62,31 @@ interface ObdRepository : Closeable {
      * Query a single PID and return the calculated value.
      */
     suspend fun queryPid(spec: PidSpec): Result<Double>
+
+    /**
+     * Dynamically update fast timing on active session.
+     */
+    fun updateFastTiming(fastTiming: Boolean)
+
+    /**
+     * Update whether ATSH header caching is enabled.
+     */
+    fun setCacheAtsh(cacheAtsh: Boolean)
+
+    /**
+     * Update whether CAN hardware address filtering (AT CRA) is enabled.
+     */
+    fun setCanFiltering(canFiltering: Boolean)
+
+    /**
+     * Update whether ELM327 data compression (ATS0/ATS1) is enabled.
+     */
+    fun setElmCompression(enabled: Boolean)
+
+    /**
+     * Update K-Line optimization settings.
+     */
+    fun setKlineOptimization(optimization: Boolean, longMessages: Boolean)
 }
 
 /**
@@ -65,6 +98,17 @@ class ObdRepositoryImpl(
     
     private var connection: BluetoothSppClient.Connection? = null
     private var session: Elm327Session? = null
+    private var fastTimingEnabled: Boolean = false
+    private var cacheAtshEnabled: Boolean = true
+    private var canFilteringEnabled: Boolean = true
+    private var elmCompressionEnabled: Boolean = true
+    private var klineOptimizationEnabled: Boolean = false
+    private var klineLongMessagesEnabled: Boolean = false
+
+    private fun getResponseCanId(requestHeaderHex: String): String? {
+        val req = requestHeaderHex.toIntOrNull(16) ?: return null
+        return (req + 8).toString(16).uppercase().padStart(3, '0')
+    }
     
     override fun getBondedDevices(): List<BluetoothDevice> {
         val adapter = bluetoothAdapter ?: return emptyList()
@@ -73,7 +117,21 @@ class ObdRepositoryImpl(
         }.getOrDefault(emptyList())
     }
     
-    override suspend fun connect(deviceAddress: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun connect(
+        deviceAddress: String,
+        fastTiming: Boolean,
+        cacheAtsh: Boolean,
+        canFiltering: Boolean,
+        elmCompression: Boolean,
+        klineOptimization: Boolean,
+        klineLongMessages: Boolean,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        fastTimingEnabled = fastTiming
+        cacheAtshEnabled = cacheAtsh
+        canFilteringEnabled = canFiltering
+        elmCompressionEnabled = elmCompression
+        klineOptimizationEnabled = klineOptimization
+        klineLongMessagesEnabled = klineLongMessages
         runCatching {
             val adapter = bluetoothAdapter ?: error("BluetoothAdapter is null")
             adapter.cancelDiscovery()
@@ -83,13 +141,63 @@ class ObdRepositoryImpl(
             val conn = client.connect(device)
             
             connection = conn
+            val filterId = if (canFiltering) getResponseCanId("7E1") else null
             session = Elm327Session(conn.input, conn.output).apply {
-                initialize(headerHex = "7E1")
+                initialize(
+                    headerHex = "7E1",
+                    fastTiming = fastTiming,
+                    canFilterHex = filterId,
+                    elmCompression = elmCompression,
+                    klineOptimization = klineOptimization,
+                    klineLongMessages = klineLongMessages,
+                )
             }
+        }
+    }
+
+    override fun updateFastTiming(fastTiming: Boolean) {
+        fastTimingEnabled = fastTiming
+        session?.runCatching {
+            configureTiming(fastTiming)
+        }
+    }
+
+    override fun setCacheAtsh(cacheAtsh: Boolean) {
+        cacheAtshEnabled = cacheAtsh
+        if (!cacheAtsh) {
+            session?.resetHeader()
+        }
+    }
+
+    override fun setCanFiltering(canFiltering: Boolean) {
+        canFilteringEnabled = canFiltering
+        session?.runCatching {
+            if (!canFiltering) {
+                setCanReceiveAddress(null)
+            } else {
+                val header = getCurrentHeader() ?: "7E1"
+                getResponseCanId(header)?.let { setCanReceiveAddress(it) }
+            }
+        }
+    }
+
+    override fun setElmCompression(enabled: Boolean) {
+        elmCompressionEnabled = enabled
+        session?.runCatching {
+            configureCompression(enabled)
+        }
+    }
+
+    override fun setKlineOptimization(optimization: Boolean, longMessages: Boolean) {
+        klineOptimizationEnabled = optimization
+        klineLongMessagesEnabled = longMessages
+        session?.runCatching {
+            configureKline(optimization, longMessages)
         }
     }
     
     override fun disconnect() {
+        session?.resetHeader()
         runCatching { session?.close() }
         runCatching { connection?.close() }
         session = null
@@ -104,10 +212,23 @@ class ObdRepositoryImpl(
         runCatching {
             val currentSession = session ?: error("Not connected to OBD device")
             
-            // Ensure header is set
-            currentSession.sendExpectOk("ATSH${spec.headerHex}", timeoutMs = 800)
+            // Ensure header is set (cached if enabled to save ~40ms round-trip)
+            if (cacheAtshEnabled) {
+                currentSession.setHeader(spec.headerHex)
+            } else {
+                currentSession.sendExpectOk("ATSH${spec.headerHex}", timeoutMs = 800)
+            }
+
+            // Ensure hardware CAN filter is configured
+            if (canFilteringEnabled) {
+                getResponseCanId(spec.headerHex)?.let { filterId ->
+                    runCatching { currentSession.setCanReceiveAddress(filterId) }
+                }
+            }
             
-            val response = currentSession.send(spec.modeAndPid, timeoutMs = 2000)
+            // Do not append " 1" because it prematurely truncates multi-frame ISO-TP CAN responses (PID 2103)
+            val cmd = spec.modeAndPid.trim()
+            val response = currentSession.send(cmd, timeoutMs = 2000)
             
             if (response.response.isNoData) {
                 Log.w("OBD", "NO DATA for ${spec.modeAndPid}. Raw: ${response.response.raw}")
