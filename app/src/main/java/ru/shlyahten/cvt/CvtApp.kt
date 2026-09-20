@@ -6,6 +6,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import ru.shlyahten.cvt.data.AppSettings
 
+enum class BtStatus {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED,
+    ERROR,
+}
+
 class CvtApp : Application() {
 
     lateinit var appSettings: AppSettings
@@ -22,6 +29,18 @@ class CvtApp : Application() {
 
     private val _connectionStatus = MutableStateFlow("Idle")
     val connectionStatus: StateFlow<String> = _connectionStatus.asStateFlow()
+
+    private val _btStatus = MutableStateFlow(BtStatus.DISCONNECTED)
+    val btStatus: StateFlow<BtStatus> = _btStatus.asStateFlow()
+
+    private val _connectionLatencyMs = MutableStateFlow<Long?>(null)
+    val connectionLatencyMs: StateFlow<Long?> = _connectionLatencyMs.asStateFlow()
+
+    private val _errorCount = MutableStateFlow(0)
+    val errorCount: StateFlow<Int> = _errorCount.asStateFlow()
+
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
     private val _oilDegradation = MutableStateFlow<Long?>(null)
     val oilDegradation: StateFlow<Long?> = _oilDegradation.asStateFlow()
@@ -51,11 +70,38 @@ class CvtApp : Application() {
         _cvtTemp1C.value = celsius
     }
 
+    fun updateBtStatus(status: BtStatus) {
+        _btStatus.value = status
+    }
+
+    fun updateConnectionMetrics(
+        latencyMs: Long?,
+        errorIncrement: Boolean = false,
+        errorMsg: String? = null,
+        resetErrors: Boolean = false,
+    ) {
+        _connectionLatencyMs.value = latencyMs
+        if (resetErrors) {
+            _errorCount.value = 0
+            _lastError.value = null
+        } else {
+            if (errorIncrement) {
+                _errorCount.value += 1
+            }
+            if (errorMsg != null) {
+                _lastError.value = errorMsg
+            }
+        }
+    }
+
     fun updateData(temp: Double?, count: Int?, connected: Boolean, status: String) {
         _cvtTemp1C.value = temp
         _cvtTempCount.value = count
         _isConnected.value = connected
         _connectionStatus.value = status
+        if (!connected) {
+            _connectionLatencyMs.value = null
+        }
     }
 
     fun updateOilDegradation(degradation: Long?) {

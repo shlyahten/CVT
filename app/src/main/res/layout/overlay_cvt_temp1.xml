@@ -13,16 +13,6 @@
         android:layout_marginEnd="8dp"
         android:background="@drawable/dot_indicator" />
 
-    <TextView
-        android:id="@+id/overlay_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="6dp"
-        android:fontFamily="sans-serif-medium"
-        android:text="CVT"
-        android:textColor="#94A3B8"
-        android:textSize="12sp"
-        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/overlay_cvt_temp1_text"

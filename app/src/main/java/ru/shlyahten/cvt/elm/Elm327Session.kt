@@ -19,9 +19,92 @@ class Elm327Session(
         val response: ElmResponseParser.Parsed,
     )
 
-    fun initialize(headerHex: String = "7E1") {
-        Log.d(TAG, "=== Starting ELM327 initialization ===")
+    private var currentHeaderHex: String? = null
+    private var currentFilterHex: String? = null
+
+    fun getCurrentHeader(): String? = currentHeaderHex
+    fun getCurrentFilter(): String? = currentFilterHex
+
+    fun resetHeader() {
+        currentHeaderHex = null
+        currentFilterHex = null
+    }
+
+    fun setHeader(headerHex: String) {
+        val clean = headerHex.trim().uppercase()
+        if (currentHeaderHex != clean) {
+            Log.d(TAG, "Setting ATSH$clean (previous: $currentHeaderHex)...")
+            sendExpectOk("ATSH$clean", timeoutMs = 800)
+            currentHeaderHex = clean
+        } else {
+            Log.d(TAG, "ATSH$clean is already cached, skipping")
+        }
+    }
+
+    fun setCanReceiveAddress(filterHex: String?) {
+        val clean = filterHex?.trim()?.uppercase()
+        if (currentFilterHex != clean) {
+            if (clean.isNullOrBlank()) {
+                Log.d(TAG, "Resetting CAN receive address filter (ATAR)...")
+                sendExpectOk("ATAR", timeoutMs = 800)
+                currentFilterHex = null
+            } else {
+                Log.d(TAG, "Setting CAN receive address filter: ATCRA$clean (previous: $currentFilterHex)...")
+                sendExpectOk("ATCRA$clean", timeoutMs = 800)
+                currentFilterHex = clean
+            }
+        }
+    }
+
+    fun configureTiming(fastTiming: Boolean) {
+        if (fastTiming) {
+            // Use ATAT1 instead of ATAT2: ATAT2 aggressively truncates multi-frame ISO-TP CAN responses (PID 2103)
+            Log.d(TAG, "Configuring fast timing: ATAT1 (adaptive) + ATST19 (100ms timeout)...")
+            sendExpectOk("ATAT1")
+            sendExpectOk("ATST19")
+        } else {
+            Log.d(TAG, "Configuring standard timing: ATAT1 (standard) + ATST32 (200ms timeout)...")
+            sendExpectOk("ATAT1")
+            sendExpectOk("ATST32")
+        }
+    }
+
+    fun configureCompression(compress: Boolean) {
+        if (compress) {
+            Log.d(TAG, "Enabling ELM327 data compression (ATS0 - spaces off)...")
+            sendExpectOk("ATS0")
+        } else {
+            Log.d(TAG, "Disabling ELM327 data compression (ATS1 - spaces on)...")
+            sendExpectOk("ATS1")
+        }
+    }
+
+    fun configureKline(optimization: Boolean, longMessages: Boolean) {
+        if (optimization) {
+            Log.d(TAG, "Configuring K-Line optimizations: ATSW20 + ATIB10...")
+            runCatching { sendExpectOk("ATSW20", timeoutMs = 800) }
+            runCatching { sendExpectOk("ATIB10", timeoutMs = 800) }
+        }
+        if (longMessages) {
+            Log.d(TAG, "Enabling long K-Line messages (ATAL)...")
+            runCatching { sendExpectOk("ATAL", timeoutMs = 800) }
+        } else {
+            runCatching { sendExpectOk("ATNL", timeoutMs = 800) }
+        }
+    }
+
+    fun initialize(
+        headerHex: String = "7E1",
+        fastTiming: Boolean = false,
+        canFilterHex: String? = null,
+        elmCompression: Boolean = true,
+        klineOptimization: Boolean = false,
+        klineLongMessages: Boolean = false,
+    ) {
+        Log.d(TAG, "=== Starting ELM327 initialization (fastTiming=$fastTiming, canFilter=$canFilterHex, compression=$elmCompression, klineOpt=$klineOptimization, klineLong=$klineLongMessages) ===")
         Log.d(TAG, "Header: $headerHex")
+        currentHeaderHex = null
+        currentFilterHex = null
 
         // Reset + basic setup per algorithm requirements for CVT ECU communication
         Log.d(TAG, "Sending ATZ (reset)...")
@@ -33,8 +116,13 @@ class Elm327Session(
         Log.d(TAG, "Sending ATL0 (linefeeds off)...")
         sendExpectOk("ATL0")
 
-        Log.d(TAG, "Sending ATS0 (spaces off)...")
-        sendExpectOk("ATS0")
+        if (elmCompression) {
+            Log.d(TAG, "Sending ATS0 (spaces off)...")
+            sendExpectOk("ATS0")
+        } else {
+            Log.d(TAG, "Sending ATS1 (spaces on)...")
+            sendExpectOk("ATS1")
+        }
 
         Log.d(TAG, "Sending ATH1 (headers on)...")
         sendExpectOk("ATH1")
@@ -42,8 +130,18 @@ class Elm327Session(
         Log.d(TAG, "Sending ATSP6 (ISO 15765-4 CAN)...")
         sendExpectOk("ATSP6") // ISO 15765-4 CAN (11bit 500k)
 
-        Log.d(TAG, "Sending ATSH$headerHex (set header to $headerHex)...")
-        sendExpectOk("ATSH$headerHex")
+        configureTiming(fastTiming)
+        configureKline(klineOptimization, klineLongMessages)
+
+        setHeader(headerHex)
+
+        if (!canFilterHex.isNullOrBlank()) {
+            runCatching {
+                setCanReceiveAddress(canFilterHex)
+            }.onFailure {
+                Log.w(TAG, "ATCRA not supported by adapter: ${it.message}")
+            }
+        }
 
         Log.d(TAG, "=== ELM327 initialization complete ===")
     }
@@ -86,27 +184,25 @@ class Elm327Session(
     }
 
     private fun readUntilPrompt(timeoutMs: Long): String {
-        Log.d(TAG, "Reading response with timeout ${timeoutMs}ms...")
         val start = System.currentTimeMillis()
         val sb = StringBuilder()
+        val buf = ByteArray(512)
 
         try {
             while (System.currentTimeMillis() - start < timeoutMs) {
-                if (input.available() > 0) {
-                    val buf = ByteArray(256)
-                    val read = input.read(buf)
+                val available = input.available()
+                if (available > 0) {
+                    val read = input.read(buf, 0, minOf(buf.size, available))
                     if (read == -1) break
 
                     val chunk = String(buf, 0, read, Charsets.US_ASCII)
-                    Log.d(TAG, "Read $read bytes: '$chunk'")
                     sb.append(chunk)
 
                     if (chunk.contains('>')) {
-                        Log.d(TAG, "Found prompt '>', stopping read")
                         break
                     }
                 } else {
-                    Thread.sleep(20)
+                    Thread.sleep(2)
                 }
             }
         } catch (e: Exception) {
