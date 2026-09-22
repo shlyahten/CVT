@@ -84,6 +84,12 @@
     <!-- Main Screen - Autostart & Background -->
     <string name="screen_main_autostart_title">Автозапуск на ГУ</string>
     <string name="screen_main_autostart_label">Запускать мониторинг при включении зажигания / ГУ Teyes</string>
+    <string name="screen_main_keep_alive_title">Постоянная служба (Keep-Alive)</string>
+    <string name="screen_main_keep_alive_label">Служба остаётся активной при сне ГУ для мгновенного и надёжного автозапуска</string>
+    <string name="screen_main_status_bar_temp_icon_title">Температура в значке статус-бара</string>
+    <string name="screen_main_status_bar_temp_icon_label">Выводить цифры температуры прямо в иконку уведомления в строке состояния</string>
+    <string name="screen_main_dock_status_bar_button">Прикрепить виджет к статус-бару</string>
+    <string name="status_standby">Ожидание подключения…</string>
     <string name="screen_main_autoconnect_title">Автоподключение</string>
     <string name="screen_main_autoconnect_label">Автоматически подключаться к последнему адаптеру</string>
     <string name="screen_main_auto_enable_bt_title">Авто-включение Bluetooth 2</string>

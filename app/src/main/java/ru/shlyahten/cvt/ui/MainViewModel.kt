@@ -51,6 +51,8 @@ data class UiState(
     val oilDegradationWeeklyDiff: Long? = null,
     val floatingOverlayDesired: Boolean = true,
     val autostartDesired: Boolean = false,
+    val keepAliveDesired: Boolean = true,
+    val statusBarTempIconDesired: Boolean = true,
     val autoconnectDesired: Boolean = true,
     val autoEnableBluetoothDesired: Boolean = true,
     val isBluetoothEnabled: Boolean = true,
@@ -110,6 +112,8 @@ class MainViewModel : ViewModel() {
         val savedFormula = s.getFormula()
         val savedOverlay = s.isOverlayEnabled()
         val savedAutostart = s.isAutostartEnabled()
+        val savedKeepAlive = s.isKeepAliveEnabled()
+        val savedStatusBarTempIcon = s.isStatusBarTempIconEnabled()
         val savedAutoconnect = s.isAutoconnectEnabled()
         val savedAutoEnableBt = s.isAutoEnableBluetoothEnabled()
         val savedScale = s.getOverlayScale()
@@ -134,6 +138,8 @@ class MainViewModel : ViewModel() {
                 overlayScale = savedScale,
                 overlayTransparency = savedTransparency,
                 autostartDesired = savedAutostart,
+                keepAliveDesired = savedKeepAlive,
+                statusBarTempIconDesired = savedStatusBarTempIcon,
                 autoconnectDesired = savedAutoconnect,
                 autoEnableBluetoothDesired = savedAutoEnableBt,
                 isBluetoothEnabled = isBtEnabled,
@@ -166,6 +172,10 @@ class MainViewModel : ViewModel() {
             enableBluetooth(context)
         } else if (hasBtPermission) {
             refreshBondedDevices(context)
+            if (savedAutoconnect && isBtEnabled && !CvtOverlayService.isRunningFlow.value) {
+                addLogEntry("Autoconnect enabled: automatically starting monitoring...")
+                connect(context)
+            }
         }
 
         // Observe background service running state
@@ -344,9 +354,13 @@ class MainViewModel : ViewModel() {
                         }
                         BluetoothAdapter.STATE_ON -> {
                             _state.update { it.copy(isBluetoothEnabled = true, isBluetoothEnabling = false) }
-                            c?.let {
-                                addLogEntry(it.getString(R.string.log_bluetooth_enabled))
-                                refreshBondedDevices(it)
+                            c?.let { ctx ->
+                                addLogEntry(ctx.getString(R.string.log_bluetooth_enabled))
+                                refreshBondedDevices(ctx)
+                                if (settings?.isAutoconnectEnabled() == true && !CvtOverlayService.isRunningFlow.value) {
+                                    addLogEntry("Bluetooth turned ON: auto-starting monitoring...")
+                                    connect(ctx)
+                                }
                             }
                         }
                         BluetoothAdapter.STATE_TURNING_OFF -> {
@@ -699,6 +713,34 @@ class MainViewModel : ViewModel() {
         settings?.setAutostartEnabled(enabled)
         _state.update { it.copy(autostartDesired = enabled) }
         addLogEntry("Autostart ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setKeepAliveDesired(enabled: Boolean) {
+        settings?.setKeepAliveEnabled(enabled)
+        _state.update { it.copy(keepAliveDesired = enabled) }
+        addLogEntry("Persistent Keep-Alive ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setStatusBarTempIconDesired(enabled: Boolean) {
+        settings?.setStatusBarTempIconEnabled(enabled)
+        _state.update { it.copy(statusBarTempIconDesired = enabled) }
+        addLogEntry("Status bar temp icon ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun dockOverlayToStatusBar() {
+        val s = settings ?: return
+        s.setOverlayPosition(x = 24, y = 0)
+        s.setOverlayScale(0.85f)
+        s.setOverlayTransparency(20)
+        s.setOverlayEnabled(true)
+        _state.update {
+            it.copy(
+                floatingOverlayDesired = true,
+                overlayScale = 0.85f,
+                overlayTransparency = 20,
+            )
+        }
+        addLogEntry("Overlay docked to status bar (y=0, scale=0.85, transparency=20%)")
     }
 
     fun setAutoconnectDesired(enabled: Boolean) {

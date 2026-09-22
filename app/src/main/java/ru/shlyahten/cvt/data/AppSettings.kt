@@ -15,6 +15,12 @@ class AppSettings(context: Context) {
     private val _autostartFlow = MutableStateFlow(isAutostartEnabled())
     val autostartFlow: StateFlow<Boolean> = _autostartFlow.asStateFlow()
 
+    private val _keepAliveFlow = MutableStateFlow(isKeepAliveEnabled())
+    val keepAliveFlow: StateFlow<Boolean> = _keepAliveFlow.asStateFlow()
+
+    private val _statusBarTempIconFlow = MutableStateFlow(isStatusBarTempIconEnabled())
+    val statusBarTempIconFlow: StateFlow<Boolean> = _statusBarTempIconFlow.asStateFlow()
+
     private val _autoEnableBluetoothFlow = MutableStateFlow(isAutoEnableBluetoothEnabled())
     val autoEnableBluetoothFlow: StateFlow<Boolean> = _autoEnableBluetoothFlow.asStateFlow()
 
@@ -109,6 +115,22 @@ class AppSettings(context: Context) {
     fun setAutostartEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTOSTART, enabled).apply()
         _autostartFlow.value = enabled
+    }
+
+    fun isKeepAliveEnabled(): Boolean =
+        prefs.getBoolean(KEY_KEEP_ALIVE, true)
+
+    fun setKeepAliveEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KEEP_ALIVE, enabled).apply()
+        _keepAliveFlow.value = enabled
+    }
+
+    fun isStatusBarTempIconEnabled(): Boolean =
+        prefs.getBoolean(KEY_STATUS_BAR_TEMP_ICON, true)
+
+    fun setStatusBarTempIconEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_STATUS_BAR_TEMP_ICON, enabled).apply()
+        _statusBarTempIconFlow.value = enabled
     }
 
     fun isAutoconnectEnabled(): Boolean =
@@ -262,6 +284,8 @@ class AppSettings(context: Context) {
         private const val KEY_DEVICE_ADDRESS = "pref_device_address"
         private const val KEY_DEVICE_NAME = "pref_device_name"
         private const val KEY_AUTOSTART = "pref_autostart"
+        private const val KEY_KEEP_ALIVE = "pref_keep_alive"
+        private const val KEY_STATUS_BAR_TEMP_ICON = "pref_status_bar_temp_icon"
         private const val KEY_AUTOCONNECT = "pref_autoconnect"
         private const val KEY_AUTO_ENABLE_BLUETOOTH = "pref_auto_enable_bluetooth"
         private const val KEY_OVERLAY_ENABLED = "pref_overlay_enabled"

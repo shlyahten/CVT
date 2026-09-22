@@ -1588,9 +1588,23 @@ private fun ControlsAndSettingsSection(
                                     containerColor = AutoSurfaceCard,
                                     labelColor = AutoTextPrimary
                                 ),
-                                modifier = Modifier.weight(1f)
+                                 modifier = Modifier.weight(1f)
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = { vm.dockOverlayToStatusBar() },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            stringResource(R.string.screen_main_dock_status_bar_button),
+                            color = AutoCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
@@ -1616,6 +1630,62 @@ private fun ControlsAndSettingsSection(
                 Switch(
                     checked = state.autostartDesired,
                     onCheckedChange = { vm.setAutostartDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoEmerald,
+                        checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Persistent Keep-Alive Service Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_keep_alive_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_keep_alive_label),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.keepAliveDesired,
+                    onCheckedChange = { vm.setKeepAliveDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoEmerald,
+                        checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Status Bar Temperature Icon Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_status_bar_temp_icon_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_status_bar_temp_icon_label),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.statusBarTempIconDesired,
+                    onCheckedChange = { vm.setStatusBarTempIconDesired(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = AutoEmerald,
                         checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
