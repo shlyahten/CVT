@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -298,11 +299,7 @@ class CvtOverlayService : Service() {
             addAction(BootReceiver.ACTION_QUICKBOOT_POWERON)
             addAction(Intent.ACTION_SHUTDOWN)
         }
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(receiver, filter)
-        }
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
     }
 
     private fun unregisterSystemEventReceiver() {
@@ -939,10 +936,11 @@ class CvtOverlayService : Service() {
     }
 
     private fun buildForegroundNotification(statusText: String, temp: Double? = null): Notification {
-        val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            setPackage(packageName)
-        }
+        val openAppIntent = Intent(this, MainActivity::class.java)
+        openAppIntent.component = ComponentName(this, MainActivity::class.java)
+        openAppIntent.setPackage(packageName)
+        openAppIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
         val openApp = PendingIntent.getActivity(
             this,
             0,
@@ -950,10 +948,11 @@ class CvtOverlayService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val stopIntent = Intent(this, CvtOverlayService::class.java).apply {
-            action = ACTION_STOP
-            setPackage(packageName)
-        }
+        val stopIntent = Intent(this, CvtOverlayService::class.java)
+        stopIntent.component = ComponentName(this, CvtOverlayService::class.java)
+        stopIntent.setPackage(packageName)
+        stopIntent.action = ACTION_STOP
+
         val stopPendingIntent = PendingIntent.getService(
             this,
             1,
