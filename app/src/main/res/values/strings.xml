@@ -88,7 +88,6 @@
     <string name="screen_main_keep_alive_label">Keep service running silently during head unit sleep for reliable autostart</string>
     <string name="screen_main_status_bar_temp_icon_title">Status Bar Temperature Icon</string>
     <string name="screen_main_status_bar_temp_icon_label">Display temperature digits in the status bar notification icon</string>
-    <string name="screen_main_dock_status_bar_button">Dock Widget to Status Bar</string>
     <string name="status_standby">Waiting for connection…</string>
     <string name="screen_main_autoconnect_title">Auto-connect</string>
     <string name="screen_main_autoconnect_label">Automatically connect to the last selected adapter</string>

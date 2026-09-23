@@ -727,22 +727,6 @@ class MainViewModel : ViewModel() {
         addLogEntry("Status bar temp icon ${if (enabled) "enabled" else "disabled"}")
     }
 
-    fun dockOverlayToStatusBar() {
-        val s = settings ?: return
-        s.setOverlayPosition(x = 24, y = 0)
-        s.setOverlayScale(0.85f)
-        s.setOverlayTransparency(20)
-        s.setOverlayEnabled(true)
-        _state.update {
-            it.copy(
-                floatingOverlayDesired = true,
-                overlayScale = 0.85f,
-                overlayTransparency = 20,
-            )
-        }
-        addLogEntry("Overlay docked to status bar (y=0, scale=0.85, transparency=20%)")
-    }
-
     fun setAutoconnectDesired(enabled: Boolean) {
         settings?.setAutoconnectEnabled(enabled)
         _state.update { it.copy(autoconnectDesired = enabled) }

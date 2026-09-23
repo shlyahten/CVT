@@ -1588,23 +1588,9 @@ private fun ControlsAndSettingsSection(
                                     containerColor = AutoSurfaceCard,
                                     labelColor = AutoTextPrimary
                                 ),
-                                 modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick = { vm.dockOverlayToStatusBar() },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            stringResource(R.string.screen_main_dock_status_bar_button),
-                            color = AutoCyan,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
                     }
                 }
             }
