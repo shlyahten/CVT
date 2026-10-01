@@ -36,44 +36,52 @@ object ObdPayloadDecoder {
         var i = 0
 
         while (i < allTokens.size) {
-            // Skip CAN ID (3 or 4 hex chars like "7E9" or "7EA")
+            // Skip CAN ID (3 or more hex chars like "7E9" or "18DAF110")
             if (allTokens[i].length >= 3 && allTokens[i].all { c -> c.isDigit() || c in 'A'..'F' }) {
                 i++
                 continue
             }
 
-            // Check for PCI byte
+            // Check for PCI byte (2 hex characters)
             if (allTokens[i].length == 2) {
                 val pci = allTokens[i].toIntOrNull(16) ?: run { i++; continue }
+                val pciType = (pci and 0xF0) shr 4
 
-                when (pci) {
-                    0x10 -> {
-                        expectedPayloadLength = allTokens.getOrNull(i + 1)?.toIntOrNull(16)
-                        // First frame: skip PCI (0x10) and length byte
+                when (pciType) {
+                    1 -> {
+                        // First frame (PCI 0x10..0x1F): 12-bit payload length
+                        val lenLowByte = allTokens.getOrNull(i + 1)?.toIntOrNull(16) ?: break
+                        expectedPayloadLength = ((pci and 0x0F) shl 8) or lenLowByte
                         i += 2
-                        // Add remaining data bytes from this frame until next CAN ID or PCI
-                        while (i < allTokens.size) {
-                            if (expectedPayloadLength != null && assembledPayload.size >= expectedPayloadLength) break
+
+                        // First frame contains at most 6 payload bytes
+                        var bytesAdded = 0
+                        while (i < allTokens.size && bytesAdded < 6) {
+                            if (assembledPayload.size >= expectedPayloadLength) break
                             if (allTokens[i].length >= 3) break // Next CAN ID
                             val nextVal = allTokens[i].toIntOrNull(16) ?: break
                             assembledPayload.add(nextVal.toByte())
+                            bytesAdded++
                             i++
                         }
                     }
-                    in 0x21..0x2F -> {
-                        // Continuation frame: skip PCI byte only
+                    2 -> {
+                        // Consecutive frame (PCI 0x20..0x2F): skip PCI byte
                         i++
-                        // Add data bytes from this frame
-                        while (i < allTokens.size) {
+
+                        // Consecutive frame contains at most 7 payload bytes
+                        var bytesAdded = 0
+                        while (i < allTokens.size && bytesAdded < 7) {
                             if (expectedPayloadLength != null && assembledPayload.size >= expectedPayloadLength) break
                             if (allTokens[i].length >= 3) break // Next CAN ID
                             val nextVal = allTokens[i].toIntOrNull(16) ?: break
                             assembledPayload.add(nextVal.toByte())
+                            bytesAdded++
                             i++
                         }
                     }
                     else -> {
-                        // Not a PCI byte, might be data or other token
+                        // Not a First Frame or Consecutive Frame PCI byte, advance
                         i++
                     }
                 }

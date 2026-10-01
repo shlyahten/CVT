@@ -52,7 +52,8 @@ data class UiState(
     val floatingOverlayDesired: Boolean = true,
     val autostartDesired: Boolean = false,
     val keepAliveDesired: Boolean = true,
-    val statusBarTempIconDesired: Boolean = true,
+    val persistentNotificationDesired: Boolean = true,
+    val statusBarTempIconDesired: Boolean = persistentNotificationDesired,
     val autoconnectDesired: Boolean = true,
     val autoEnableBluetoothDesired: Boolean = true,
     val isBluetoothEnabled: Boolean = true,
@@ -87,9 +88,12 @@ class MainViewModel : ViewModel() {
 
     private var cvtApp: CvtApp? = null
     private var settings: AppSettings? = null
+    private var isInitialized = false
+
+    private val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
 
     private fun addLogEntry(entry: String) {
-        val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
+        val timestamp = java.time.LocalTime.now().format(timeFormatter)
         val logLine = "[$timestamp] $entry"
         _state.update { currentState ->
             val updatedLogs = (currentState.logEntries + logLine).takeLast(MAX_LOG_ENTRIES)
@@ -103,9 +107,10 @@ class MainViewModel : ViewModel() {
     }
 
     fun initialize(context: Context) {
-        val app = context.applicationContext as CvtApp
+        val appContext = context.applicationContext
+        val app = appContext as CvtApp
         cvtApp = app
-        val s = AppSettings.getInstance(context)
+        val s = AppSettings.getInstance(appContext)
         settings = s
 
         val savedAddress = s.getSelectedDeviceAddress()
@@ -113,7 +118,7 @@ class MainViewModel : ViewModel() {
         val savedOverlay = s.isOverlayEnabled()
         val savedAutostart = s.isAutostartEnabled()
         val savedKeepAlive = s.isKeepAliveEnabled()
-        val savedStatusBarTempIcon = s.isStatusBarTempIconEnabled()
+        val savedPersistentNotification = s.isPersistentNotificationEnabled()
         val savedAutoconnect = s.isAutoconnectEnabled()
         val savedAutoEnableBt = s.isAutoEnableBluetoothEnabled()
         val savedScale = s.getOverlayScale()
@@ -126,7 +131,7 @@ class MainViewModel : ViewModel() {
         val savedKlineLong = s.isKlineLongMessagesEnabled()
         val savedPollInterval = s.getPollIntervalMs()
 
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val bluetoothManager = appContext.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
         val isBtEnabled = adapter?.isEnabled == true
 
@@ -139,7 +144,8 @@ class MainViewModel : ViewModel() {
                 overlayTransparency = savedTransparency,
                 autostartDesired = savedAutostart,
                 keepAliveDesired = savedKeepAlive,
-                statusBarTempIconDesired = savedStatusBarTempIcon,
+                persistentNotificationDesired = savedPersistentNotification,
+                statusBarTempIconDesired = savedPersistentNotification,
                 autoconnectDesired = savedAutoconnect,
                 autoEnableBluetoothDesired = savedAutoEnableBt,
                 isBluetoothEnabled = isBtEnabled,
@@ -159,22 +165,31 @@ class MainViewModel : ViewModel() {
             )
         }
 
-        registerBluetoothStateReceiver(context)
+        registerBluetoothStateReceiver(appContext)
 
         val hasBtPermission = if (Build.VERSION.SDK_INT >= 31) {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
         } else {
             true
         }
         _state.update { it.copy(hasConnectPermission = hasBtPermission) }
 
+        if (isInitialized) {
+            // Flow collectors already active, just refresh runtime devices
+            if (hasBtPermission) {
+                refreshBondedDevices(appContext)
+            }
+            return
+        }
+        isInitialized = true
+
         if (!isBtEnabled && savedAutoEnableBt) {
-            enableBluetooth(context)
+            enableBluetooth(appContext)
         } else if (hasBtPermission) {
-            refreshBondedDevices(context)
+            refreshBondedDevices(appContext)
             if (savedAutoconnect && isBtEnabled && !CvtOverlayService.isRunningFlow.value) {
                 addLogEntry("Autoconnect enabled: automatically starting monitoring...")
-                connect(context)
+                connect(appContext)
             }
         }
 
@@ -584,11 +599,12 @@ class MainViewModel : ViewModel() {
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
             addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
         }
-        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        val appContext = context.applicationContext
+        ContextCompat.registerReceiver(appContext, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
 
         try {
             if (adapter.isDiscovering) {
-                adapter.cancelDiscovery()
+                runCatching { adapter.cancelDiscovery() }
             }
             adapter.startDiscovery()
         } catch (e: SecurityException) {
@@ -598,7 +614,8 @@ class MainViewModel : ViewModel() {
     }
 
     fun stopDiscovery(context: Context) {
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val appContext = context.applicationContext
+        val bluetoothManager = appContext.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
         runCatching {
             if (adapter?.isDiscovering == true) {
@@ -606,14 +623,15 @@ class MainViewModel : ViewModel() {
             }
         }
         scanReceiver?.let {
-            runCatching { context.unregisterReceiver(it) }
+            runCatching { appContext.unregisterReceiver(it) }
             scanReceiver = null
         }
         _state.update { it.copy(isScanning = false) }
     }
 
     fun pairDevice(context: Context, device: BluetoothDevice) {
-        addLogEntry("Initiating pairing with ${device.name ?: device.address}...")
+        val devName = runCatching { device.name }.getOrNull() ?: device.address
+        addLogEntry("Initiating pairing with $devName...")
         try {
             val bonded = device.createBond()
             if (bonded) {
@@ -621,6 +639,8 @@ class MainViewModel : ViewModel() {
             } else {
                 addLogEntry("Pairing returned false for ${device.address}")
             }
+        } catch (e: SecurityException) {
+            addLogEntry("Pairing permission error: ${e.message}")
         } catch (e: Exception) {
             addLogEntry("Pairing error: ${e.message}")
         }
@@ -721,11 +741,19 @@ class MainViewModel : ViewModel() {
         addLogEntry("Persistent Keep-Alive ${if (enabled) "enabled" else "disabled"}")
     }
 
-    fun setStatusBarTempIconDesired(enabled: Boolean) {
-        settings?.setStatusBarTempIconEnabled(enabled)
-        _state.update { it.copy(statusBarTempIconDesired = enabled) }
-        addLogEntry("Status bar temp icon ${if (enabled) "enabled" else "disabled"}")
+    fun setPersistentNotificationDesired(enabled: Boolean) {
+        settings?.setPersistentNotificationEnabled(enabled)
+        _state.update {
+            it.copy(
+                persistentNotificationDesired = enabled,
+                statusBarTempIconDesired = enabled,
+            )
+        }
+        addLogEntry("Persistent notification ${if (enabled) "enabled" else "disabled"}")
     }
+
+    @Deprecated("Use setPersistentNotificationDesired", ReplaceWith("setPersistentNotificationDesired(enabled)"))
+    fun setStatusBarTempIconDesired(enabled: Boolean) = setPersistentNotificationDesired(enabled)
 
     fun setAutoconnectDesired(enabled: Boolean) {
         settings?.setAutoconnectEnabled(enabled)

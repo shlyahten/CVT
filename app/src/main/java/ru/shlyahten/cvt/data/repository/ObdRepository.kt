@@ -134,7 +134,7 @@ class ObdRepositoryImpl(
         klineLongMessagesEnabled = klineLongMessages
         runCatching {
             val adapter = bluetoothAdapter ?: error("BluetoothAdapter is null")
-            adapter.cancelDiscovery()
+            runCatching { adapter.cancelDiscovery() }
             
             val client = BluetoothSppClient(adapter)
             val device = adapter.getRemoteDevice(deviceAddress)
@@ -259,17 +259,28 @@ class ObdRepositoryImpl(
             
             val variables = ObdVariableMapping.fromDataBytes(data, spec.valueIndex)
 
-            // High performance fast-path for CVT temperature equations (avoids AST/RPN allocation on every tick)
-            val normalizedEq = spec.equation.replace(" ", "")
+            // High performance fast-path for CVT temperature and degradation equations
+            val eq = spec.equation
             when {
-                normalizedEq == "N" -> variables["N"] ?: 0.0
-                normalizedEq.contains("0.000000002344") -> {
+                eq == "N" || eq.trim() == "N" -> variables["N"] ?: 0.0
+                eq.contains("0.000000002344") -> {
                     CvtTempParser.convertCountToTemp1((variables["N"] ?: 0.0).toInt())
                 }
-                normalizedEq.contains("0.0000286") -> {
+                eq.contains("0.0000286") -> {
                     CvtTempParser.convertCountToTemp2((variables["N"] ?: 0.0).toInt())
                 }
-                else -> ExpressionEvaluator.eval(spec.equation, variables)
+                eq.replace(" ", "") == "AC*256+AD" -> {
+                    val ac = variables["AC"] ?: 0.0
+                    val ad = variables["AD"] ?: 0.0
+                    ac * 256.0 + ad
+                }
+                eq.replace(" ", "") == "AB*65536+AC*256+AD" -> {
+                    val ab = variables["AB"] ?: 0.0
+                    val ac = variables["AC"] ?: 0.0
+                    val ad = variables["AD"] ?: 0.0
+                    ab * 65536.0 + ac * 256.0 + ad
+                }
+                else -> ExpressionEvaluator.eval(eq, variables)
             }
         }
     }

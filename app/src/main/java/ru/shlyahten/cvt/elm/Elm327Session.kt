@@ -165,7 +165,7 @@ class Elm327Session(
 
         // ATZ (Reset) returns the firmware version instead of "OK"
         val isAtz = command.trim().uppercase() == "ATZ"
-        val isOk = n == "OK" || n.endsWith(" OK")
+        val isOk = n == "OK" || n.endsWith(" OK") || n.split(' ').any { it == "OK" }
 
         if (!isAtz && !isOk) {
             Log.e(TAG, "ELM init failed for '$command': ${r.response.normalized}")
@@ -189,7 +189,7 @@ class Elm327Session(
         val buf = ByteArray(512)
 
         try {
-            while (System.currentTimeMillis() - start < timeoutMs) {
+            while (System.currentTimeMillis() - start < timeoutMs && !Thread.currentThread().isInterrupted) {
                 val available = input.available()
                 if (available > 0) {
                     val read = input.read(buf, 0, minOf(buf.size, available))
@@ -205,6 +205,9 @@ class Elm327Session(
                     Thread.sleep(2)
                 }
             }
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            Log.d(TAG, "readUntilPrompt interrupted")
         } catch (e: Exception) {
             Log.e(TAG, "Error reading from input stream", e)
         }

@@ -7,15 +7,19 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.util.LruCache
 import androidx.core.graphics.drawable.IconCompat
 import kotlin.math.roundToInt
 
 object NotificationIconHelper {
 
+    private val iconCache = LruCache<Int, IconCompat>(64)
+
     /**
      * Dynamically creates a status bar notification icon with the temperature value.
      * Uses a transparent background with white glyphs so that Android SystemUI
      * can cleanly render/tint the digits in the status bar or notification shade.
+     * Caches generated IconCompat instances by integer value to eliminate GC churn.
      */
     fun createTemperatureIcon(
         context: Context,
@@ -25,12 +29,14 @@ object NotificationIconHelper {
             return IconCompat.createWithResource(context, R.mipmap.ic_launcher)
         }
 
+        val rounded = tempCelsius.roundToInt()
+        iconCache.get(rounded)?.let { return it }
+
         return try {
             val sizePx = 72
             val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
 
-            val rounded = tempCelsius.roundToInt()
             val text = when {
                 rounded in -9..99 -> "$rounded°"
                 rounded in 100..999 -> "$rounded"
@@ -56,7 +62,9 @@ object NotificationIconHelper {
 
             canvas.drawText(text, x, y, paint)
 
-            IconCompat.createWithBitmap(bitmap)
+            val icon = IconCompat.createWithBitmap(bitmap)
+            iconCache.put(rounded, icon)
+            icon
         } catch (e: Exception) {
             IconCompat.createWithResource(context, R.mipmap.ic_launcher)
         }

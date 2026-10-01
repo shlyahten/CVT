@@ -7,9 +7,14 @@ import kotlin.math.pow
  * Supports: + - * / ^ ( ) and variables (A, AA, N, AB, AC, AD, ...)
  */
 object ExpressionEvaluator {
+
+    private val rpnCache = java.util.concurrent.ConcurrentHashMap<String, List<Token>>()
+
     fun eval(expression: String, variables: Map<String, Double>): Double {
-        val tokens = tokenize(expression)
-        val rpn = toRpn(tokens)
+        val rpn = rpnCache.computeIfAbsent(expression) { expr ->
+            val tokens = tokenize(expr)
+            toRpn(tokens)
+        }
         return evalRpn(rpn, variables)
     }
 
@@ -74,7 +79,7 @@ object ExpressionEvaluator {
 
     private fun readNumber(s: String, startIdx: Int): Pair<Double?, Int> {
         var i = startIdx
-        if (s[i] == '-') i++
+        if (i < s.length && s[i] == '-') i++
         var seenDigit = false
         while (i < s.length && s[i].isDigit()) {
             seenDigit = true; i++
@@ -86,7 +91,21 @@ object ExpressionEvaluator {
             }
         }
         if (!seenDigit) return null to startIdx
-        val num = s.substring(startIdx, i).toDouble()
+        // Support scientific notation (e.g. 1e-5, 2.344e-9, 1.5E3)
+        if (i < s.length && (s[i] == 'e' || s[i] == 'E')) {
+            val eIdx = i
+            i++
+            if (i < s.length && (s[i] == '+' || s[i] == '-')) i++
+            val expStart = i
+            while (i < s.length && s[i].isDigit()) {
+                i++
+            }
+            if (i == expStart) {
+                // Not a valid exponent, backtrack to before 'e'
+                i = eIdx
+            }
+        }
+        val num = s.substring(startIdx, i).toDoubleOrNull()
         return num to i
     }
 

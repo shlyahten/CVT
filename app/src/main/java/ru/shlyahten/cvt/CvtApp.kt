@@ -74,6 +74,17 @@ class CvtApp : Application() {
         _btStatus.value = status
     }
 
+    private val _hasConnectedInSession = MutableStateFlow(false)
+    val hasConnectedInSession: StateFlow<Boolean> = _hasConnectedInSession.asStateFlow()
+
+    fun setSessionConnected(connected: Boolean) {
+        _hasConnectedInSession.value = connected
+        if (!connected) {
+            _errorCount.value = 0
+            _lastError.value = null
+        }
+    }
+
     fun updateConnectionMetrics(
         latencyMs: Long?,
         errorIncrement: Boolean = false,
@@ -85,7 +96,7 @@ class CvtApp : Application() {
             _errorCount.value = 0
             _lastError.value = null
         } else {
-            if (errorIncrement) {
+            if (errorIncrement && _hasConnectedInSession.value) {
                 _errorCount.value += 1
             }
             if (errorMsg != null) {
@@ -101,6 +112,8 @@ class CvtApp : Application() {
         _connectionStatus.value = status
         if (!connected) {
             _connectionLatencyMs.value = null
+        } else {
+            _hasConnectedInSession.value = true
         }
     }
 

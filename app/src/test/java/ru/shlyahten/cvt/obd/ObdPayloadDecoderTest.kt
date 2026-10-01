@@ -172,4 +172,39 @@ class ObdPayloadDecoderTest {
         assertEquals(16, data!!.size)
         assertEquals(0x21.toByte(), data[13])
     }
+
+    @Test
+    fun `parseIsoTpMultiFrame reassembles payload without CAN headers ATH0`() {
+        val rawLines = listOf(
+            "10 12 61 03 02 02 00 B4",
+            "21 EA 00 00 FA FA F3 40",
+            "22 00 00 21 00 00 05 AB",
+        )
+
+        val payload = ObdPayloadDecoder.parseIsoTpMultiFrame(rawLines)
+
+        assertNotNull(payload)
+        assertEquals(18, payload!!.size)
+        assertEquals(0x61.toByte(), payload[0])
+        assertEquals(0x03.toByte(), payload[1])
+        assertEquals(0x21.toByte(), payload[15])
+    }
+
+    @Test
+    fun `parseIsoTpMultiFrame handles consecutive frame sequence wrapping 0x20`() {
+        val lines = mutableListOf("7E9 10 74 61 03 01 02 03 04") // 6 bytes
+        // Frames 21..2F (15 frames * 7 bytes = 105 bytes)
+        for (sn in 1..15) {
+            val hexSn = sn.toString(16).uppercase()
+            lines.add("7E9 2$hexSn 00 01 02 03 04 05 06")
+        }
+        // Frame 16 wraps sequence to 0 (PCI 0x20), remaining bytes to reach 0x74 = 116 bytes (116 - 6 - 105 = 5 bytes)
+        lines.add("7E9 20 AA BB CC DD EE")
+
+        val payload = ObdPayloadDecoder.parseIsoTpMultiFrame(lines)
+        assertNotNull(payload)
+        assertEquals(116, payload!!.size)
+        assertEquals(0xAA.toByte(), payload[111])
+        assertEquals(0xEE.toByte(), payload[115])
+    }
 }
