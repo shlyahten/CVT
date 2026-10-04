@@ -38,11 +38,12 @@ object CvtTempParser {
             return extractNFrom2103Payload(payload)
         }
 
-        // Need at least 3 bytes: header (7E9), PCI, and data
-        if (bytes.size < 3) return null
+        // Determine if first token is a CAN ID header (>= 3 chars) or PCI byte (2 chars)
+        val hasCanHeader = bytes[0].length >= 3
+        val pciIndex = if (hasCanHeader) 1 else 0
 
-        // Parse PCI byte (second byte after header)
-        val pciStr = bytes.getOrNull(1) ?: return null
+        // Parse PCI byte
+        val pciStr = bytes.getOrNull(pciIndex) ?: return null
         val pci = pciStr.toIntOrNull(16) ?: return null
 
         // Check if it's a single frame (PCI upper nibble = 0)
@@ -50,11 +51,10 @@ object CvtTempParser {
 
         val payload: ByteArray? = if (isSingleFrame) {
             // Single frame: data starts after PCI byte
-            // Remove header (7E9) and PCI byte, then convert hex strings to bytes
-            val dataBytes = bytes.drop(2).mapNotNull { it.toIntOrNull(16)?.toByte() }
+            val dataBytes = bytes.drop(pciIndex + 1).mapNotNull { it.toIntOrNull(16)?.toByte() }
             dataBytes.toByteArray()
         } else {
-            // Multi-frame: use existing decoder
+            // Multi-frame: use ISO-TP decoder
             ObdPayloadDecoder.parseIsoTpMultiFrame(rawLines)
         }
         
@@ -70,8 +70,8 @@ object CvtTempParser {
         if (nValueIndex >= payload.size) return null
 
         val n = payload[nValueIndex].toInt() and 0xFF
-        if (n < 0 || n > 250) {
-            Log.e("CvtTempParser", "N value $n out of range 0-250")
+        if (n < 0 || n > 255) {
+            Log.e("CvtTempParser", "N value $n out of range 0-255")
             return null
         }
         return n

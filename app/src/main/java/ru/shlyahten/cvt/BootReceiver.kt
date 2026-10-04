@@ -16,25 +16,47 @@ class BootReceiver : BroadcastReceiver() {
         const val ACTION_FYT_ACCON = "com.fyt.boot.ACCON"
         const val ACTION_GLSX_ACCOFF = "com.glsx.boot.ACCOFF"
         const val ACTION_FYT_ACCOFF = "com.fyt.boot.ACCOFF"
+        const val ACTION_TS_POWER_ON = "com.ts.headunit.power.on"
+        const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         Log.d(TAG, "Received broadcast action: $action")
 
+        val settings = AppSettings.getInstance(context)
+
+        // 1. Handle ACC OFF / Shutdown:
         if (action == ACTION_GLSX_ACCOFF || action == ACTION_FYT_ACCOFF || action == Intent.ACTION_SHUTDOWN) {
-            Log.i(TAG, "ACC OFF / shutdown received ($action). Stopping CvtOverlayService...")
-            runCatching {
-                CvtOverlayService.stop(context)
-            }.onFailure { t ->
-                Log.e(TAG, "Failed to stop service on ACCOFF", t)
+            if (settings.isKeepAliveEnabled()) {
+                Log.i(TAG, "ACC OFF / shutdown received ($action). Keep-Alive enabled -> switching service to standby")
+                runCatching {
+                    CvtOverlayService.standby(context)
+                }.onFailure { t ->
+                    Log.e(TAG, "Failed to put service to standby on ACCOFF", t)
+                }
+            } else {
+                Log.i(TAG, "ACC OFF / shutdown received ($action). Stopping CvtOverlayService...")
+                runCatching {
+                    CvtOverlayService.stop(context)
+                }.onFailure { t ->
+                    Log.e(TAG, "Failed to stop service on ACCOFF", t)
+                }
             }
             return
         }
 
-        val settings = AppSettings.getInstance(context)
-        if (!settings.isAutostartEnabled()) {
-            Log.d(TAG, "Autostart is disabled in settings. Skipping.")
+        // 2. Filter BT state changes if BT turned off
+        if (action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+            val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+            if (state != BluetoothAdapter.STATE_ON) {
+                return
+            }
+        }
+
+        val isAutostartAllowed = settings.isAutostartEnabled() || settings.isAutoconnectEnabled() || settings.isKeepAliveEnabled()
+        if (!isAutostartAllowed) {
+            Log.d(TAG, "Autostart / Keep-Alive is disabled in settings. Skipping.")
             return
         }
 
@@ -55,11 +77,11 @@ class BootReceiver : BroadcastReceiver() {
             Log.w(TAG, "Autostart enabled but no paired device saved in settings. Starting service for auto-detection.")
         }
 
-        Log.i(TAG, "Starting CvtOverlayService on boot/wake/ACC (action: $action, device: ${deviceAddress ?: "auto"})")
+        Log.i(TAG, "Starting CvtOverlayService on boot/wake/ACC/BT (action: $action, device: ${deviceAddress ?: "auto"})")
         runCatching {
             CvtOverlayService.start(context)
         }.onFailure { t ->
-            Log.e(TAG, "Failed to start service on boot/wake/ACC", t)
+            Log.e(TAG, "Failed to start service on boot/wake/ACC/BT", t)
         }
     }
 }

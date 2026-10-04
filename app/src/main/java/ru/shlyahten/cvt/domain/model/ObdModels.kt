@@ -22,8 +22,8 @@ data class OilDegradationData(
  * Connection state for Bluetooth/OBD session.
  */
 sealed class ConnectionState {
-    object Idle : ConnectionState()
-    object Connecting : ConnectionState()
+    data object Idle : ConnectionState()
+    data object Connecting : ConnectionState()
     data class Connected(val deviceAddress: String) : ConnectionState()
     data class Error(val message: String) : ConnectionState()
 }

@@ -34,7 +34,7 @@ class ReadCvtTemperature(
             val nDouble = n.toDouble()
             return when (formula) {
                 Formula.Temp1 -> CvtTempParser.convertCountToTemp1(n)
-                Formula.Temp2 -> ExpressionEvaluator.eval(EQUATION_TEMP2, mapOf("N" to nDouble))
+                Formula.Temp2 -> CvtTempParser.convertCountToTemp2(n)
                 Formula.RawCount -> nDouble
             }
         }
@@ -61,8 +61,8 @@ class ReadCvtTemperature(
             result = obdRepository.queryPid(spec)
         }
 
-        // Final range validation per algorithm: T ∈ [-30; 120]
-        if (result.isSuccess) {
+        // Final range validation per algorithm: T ∈ [-30; 120] (only for temperature formulas, not raw count)
+        if (result.isSuccess && formula != Formula.RawCount) {
             val temp = result.getOrThrow()
             if (temp < -30.0 || temp > 120.0) {
                 Log.w("CVT_TEMP", "Temperature out of realistic range: $temp °C (expected -30 to 120)")

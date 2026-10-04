@@ -15,6 +15,15 @@ class AppSettings(context: Context) {
     private val _autostartFlow = MutableStateFlow(isAutostartEnabled())
     val autostartFlow: StateFlow<Boolean> = _autostartFlow.asStateFlow()
 
+    private val _keepAliveFlow = MutableStateFlow(isKeepAliveEnabled())
+    val keepAliveFlow: StateFlow<Boolean> = _keepAliveFlow.asStateFlow()
+
+    private val _persistentNotificationFlow = MutableStateFlow(isPersistentNotificationEnabled())
+    val persistentNotificationFlow: StateFlow<Boolean> = _persistentNotificationFlow.asStateFlow()
+
+    @Deprecated("Use persistentNotificationFlow", ReplaceWith("persistentNotificationFlow"))
+    val statusBarTempIconFlow: StateFlow<Boolean> = _persistentNotificationFlow.asStateFlow()
+
     private val _autoEnableBluetoothFlow = MutableStateFlow(isAutoEnableBluetoothEnabled())
     val autoEnableBluetoothFlow: StateFlow<Boolean> = _autoEnableBluetoothFlow.asStateFlow()
 
@@ -110,6 +119,32 @@ class AppSettings(context: Context) {
         prefs.edit().putBoolean(KEY_AUTOSTART, enabled).apply()
         _autostartFlow.value = enabled
     }
+
+    fun isKeepAliveEnabled(): Boolean =
+        prefs.getBoolean(KEY_KEEP_ALIVE, true)
+
+    fun setKeepAliveEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KEEP_ALIVE, enabled).apply()
+        _keepAliveFlow.value = enabled
+    }
+
+    fun isPersistentNotificationEnabled(): Boolean =
+        if (prefs.contains(KEY_PERSISTENT_NOTIFICATION)) {
+            prefs.getBoolean(KEY_PERSISTENT_NOTIFICATION, true)
+        } else {
+            prefs.getBoolean(KEY_STATUS_BAR_TEMP_ICON, true)
+        }
+
+    fun setPersistentNotificationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_PERSISTENT_NOTIFICATION, enabled).apply()
+        _persistentNotificationFlow.value = enabled
+    }
+
+    @Deprecated("Use isPersistentNotificationEnabled", ReplaceWith("isPersistentNotificationEnabled()"))
+    fun isStatusBarTempIconEnabled(): Boolean = isPersistentNotificationEnabled()
+
+    @Deprecated("Use setPersistentNotificationEnabled", ReplaceWith("setPersistentNotificationEnabled(enabled)"))
+    fun setStatusBarTempIconEnabled(enabled: Boolean) = setPersistentNotificationEnabled(enabled)
 
     fun isAutoconnectEnabled(): Boolean =
         prefs.getBoolean(KEY_AUTOCONNECT, true)
@@ -262,6 +297,9 @@ class AppSettings(context: Context) {
         private const val KEY_DEVICE_ADDRESS = "pref_device_address"
         private const val KEY_DEVICE_NAME = "pref_device_name"
         private const val KEY_AUTOSTART = "pref_autostart"
+        private const val KEY_KEEP_ALIVE = "pref_keep_alive"
+        private const val KEY_PERSISTENT_NOTIFICATION = "pref_persistent_notification"
+        private const val KEY_STATUS_BAR_TEMP_ICON = "pref_status_bar_temp_icon"
         private const val KEY_AUTOCONNECT = "pref_autoconnect"
         private const val KEY_AUTO_ENABLE_BLUETOOTH = "pref_auto_enable_bluetooth"
         private const val KEY_OVERLAY_ENABLED = "pref_overlay_enabled"

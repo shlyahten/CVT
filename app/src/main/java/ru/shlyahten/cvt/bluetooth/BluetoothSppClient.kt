@@ -36,7 +36,7 @@ class BluetoothSppClient(
 
     fun connect(device: BluetoothDevice, uuid: UUID = SPP_UUID): Connection {
         val a = adapter ?: error("BluetoothAdapter is null")
-        a.cancelDiscovery()
+        runCatching { a.cancelDiscovery() }
 
         var socket: BluetoothSocket? = null
         var lastError: Exception? = null

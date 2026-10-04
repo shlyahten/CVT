@@ -38,6 +38,28 @@ class CvtTempParserTest {
         assertEquals(33, result)
     }
 
+    @Test
+    fun `test parseCvtTempCount without CAN headers ATH0`() {
+        val rawLines = listOf(
+            "10 12 61 03 02 02 00 B4",
+            "21 EA 00 00 FA FA F3 40",
+            "22 00 00 21 00 00 05 AB",
+        )
+
+        val result = CvtTempParser.parseCvtTempCount(rawLines)
+        assertEquals(33, result)
+    }
+
+    @Test
+    fun `test parseCvtTempCount allows N up to 255`() {
+        val rawLines = listOf(
+            "61 03 02 02 00 B4 EA 00 00 FA FA F3 40 00 00 FF 00 00",
+        )
+
+        val result = CvtTempParser.parseCvtTempCount(rawLines)
+        assertEquals(255, result)
+    }
+
     /**
      * Test that invalid responses return null.
      */

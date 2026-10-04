@@ -514,7 +514,7 @@ private fun TemperatureDashboardCard(
                 val tempText = when {
                     temp == null -> "--.-"
                     formula == CvtTempFormula.RawCount -> "${temp.toInt()}"
-                    else -> String.format("%.1f", temp)
+                    else -> String.format(java.util.Locale.US, "%.1f", temp)
                 }
 
                 Row(
@@ -1616,6 +1616,62 @@ private fun ControlsAndSettingsSection(
                 Switch(
                     checked = state.autostartDesired,
                     onCheckedChange = { vm.setAutostartDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoEmerald,
+                        checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Persistent Keep-Alive Service Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_keep_alive_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_keep_alive_label),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.keepAliveDesired,
+                    onCheckedChange = { vm.setKeepAliveDesired(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = AutoEmerald,
+                        checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)
+                    )
+                )
+            }
+
+            // Persistent Notification Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.screen_main_persistent_notification_title),
+                        color = AutoTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.screen_main_persistent_notification_label),
+                        color = AutoTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.persistentNotificationDesired,
+                    onCheckedChange = { vm.setPersistentNotificationDesired(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = AutoEmerald,
                         checkedTrackColor = AutoEmerald.copy(alpha = 0.3f)

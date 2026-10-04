@@ -6,9 +6,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -48,6 +52,7 @@ import ru.shlyahten.cvt.obd.CVT_2103_TEMP_COUNT_BYTE_INDEX
 import ru.shlyahten.cvt.obd.CvtTempParser
 import ru.shlyahten.cvt.ui.CvtTempFormula
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class CvtOverlayService : Service() {
 
@@ -58,12 +63,22 @@ class CvtOverlayService : Service() {
 
         const val ACTION_START = "ru.shlyahten.cvt.action.START"
         const val ACTION_STOP = "ru.shlyahten.cvt.action.STOP"
+        const val ACTION_STANDBY = "ru.shlyahten.cvt.action.STANDBY"
         const val ACTION_RECONNECT = "ru.shlyahten.cvt.action.RECONNECT"
         const val ACTION_READ_OIL = "ru.shlyahten.cvt.action.READ_OIL"
         const val ACTION_START_DEMO = "ru.shlyahten.cvt.action.START_DEMO"
         const val ACTION_SET_DEMO_TEMP = "ru.shlyahten.cvt.action.SET_DEMO_TEMP"
+        const val ACTION_CVT_TEMP_UPDATE = "ru.shlyahten.cvt.ACTION_CVT_TEMP_UPDATE"
+
         const val EXTRA_DEMO_TEMP = "extra_demo_temp"
         const val EXTRA_DEMO_CYCLE = "extra_demo_cycle"
+        const val EXTRA_TEMP_CELSIUS = "extra_temp_celsius"
+        const val EXTRA_TEMP_INT = "extra_temp_int"
+        const val EXTRA_TEMP_FORMATTED = "extra_temp_formatted"
+        const val EXTRA_RAW_COUNT = "extra_raw_count"
+        const val EXTRA_STATUS = "extra_status"
+        const val EXTRA_CONNECTED = "extra_connected"
+        const val EXTRA_TIMESTAMP = "extra_timestamp"
 
         private val _isRunningFlow = MutableStateFlow(false)
         val isRunningFlow = _isRunningFlow.asStateFlow()
@@ -102,6 +117,13 @@ class CvtOverlayService : Service() {
             context.startService(intent)
         }
 
+        fun standby(context: Context) {
+            val intent = Intent(context, CvtOverlayService::class.java).apply {
+                action = ACTION_STANDBY
+            }
+            context.startService(intent)
+        }
+
         fun reconnect(context: Context) {
             val intent = Intent(context, CvtOverlayService::class.java).apply {
                 action = ACTION_RECONNECT
@@ -133,6 +155,10 @@ class CvtOverlayService : Service() {
     private var statusDotView: View? = null
     private var overlayParams: WindowManager.LayoutParams? = null
     private var lastKnownTemp: Double? = null
+    private var isStandby: Boolean = false
+    private var systemEventReceiver: BroadcastReceiver? = null
+    private var lastNotifStatusText: String? = null
+    private var lastNotifTempInt: Int? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -144,6 +170,14 @@ class CvtOverlayService : Service() {
 
         createNotificationChannel()
         startForegroundNotification(getString(R.string.status_connecting))
+        if (!settings.isPersistentNotificationEnabled()) {
+            if (Build.VERSION.SDK_INT >= 24) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        }
 
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
@@ -151,6 +185,7 @@ class CvtOverlayService : Service() {
 
         setupOverlayIfEnabled()
         observeAppStateForOverlay()
+        registerSystemEventReceiver()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -159,11 +194,17 @@ class CvtOverlayService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_STANDBY -> {
+                _isDemoModeFlow.value = false
+                app.setDemoMode(false)
+                demoJob?.cancel()
+                enterStandbyMode()
+            }
             ACTION_RECONNECT -> {
                 _isDemoModeFlow.value = false
                 app.setDemoMode(false)
                 demoJob?.cancel()
-                startBackgroundMonitoring()
+                startBackgroundMonitoring(forceRestart = true)
             }
             ACTION_READ_OIL -> {
                 readOilDegradationAsync()
@@ -179,15 +220,114 @@ class CvtOverlayService : Service() {
             }
             ACTION_START, null -> {
                 if (!_isDemoModeFlow.value) {
-                    startBackgroundMonitoring()
+                    startBackgroundMonitoring(forceRestart = false)
                 }
             }
         }
         return START_STICKY
     }
 
-    private fun startBackgroundMonitoring() {
+    private fun enterStandbyMode() {
+        Log.i(TAG, "enterStandbyMode: Suspending OBD polling, entering low-power standby")
+        isStandby = true
         pollJob?.cancel()
+        pollJob = null
+        serviceScope.launch(Dispatchers.IO) {
+            obdRepository?.disconnect()
+        }
+        app.setSessionConnected(false)
+        app.updateBtStatus(BtStatus.DISCONNECTED)
+        app.updateData(null, null, false, getString(R.string.status_standby))
+        updateNotificationText(getString(R.string.status_standby), temp = lastKnownTemp)
+        broadcastTemperature(null, null, getString(R.string.status_standby), false)
+    }
+
+    private fun registerSystemEventReceiver() {
+        if (systemEventReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = intent?.action ?: return
+                Log.d(TAG, "systemEventReceiver: received $action")
+                when (action) {
+                    BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                        val device = if (Build.VERSION.SDK_INT >= 33) {
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                        }
+                        Log.i(TAG, "Bluetooth ACL connected: ${device?.name} (${device?.address})")
+                        if (!_isDemoModeFlow.value) {
+                            startBackgroundMonitoring()
+                        }
+                    }
+                    BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                        val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                        if (state == BluetoothAdapter.STATE_ON) {
+                            Log.i(TAG, "Bluetooth turned ON -> auto-initiating monitoring")
+                            if (!_isDemoModeFlow.value) {
+                                startBackgroundMonitoring()
+                            }
+                        } else if (state == BluetoothAdapter.STATE_OFF || state == BluetoothAdapter.STATE_TURNING_OFF) {
+                            Log.i(TAG, "Bluetooth turned OFF")
+                            if (settings.isKeepAliveEnabled()) {
+                                enterStandbyMode()
+                            }
+                        }
+                    }
+                    BootReceiver.ACTION_GLSX_ACCOFF,
+                    BootReceiver.ACTION_FYT_ACCOFF,
+                    Intent.ACTION_SHUTDOWN -> {
+                        Log.i(TAG, "Car sleep/shutdown broadcast ($action)")
+                        if (settings.isKeepAliveEnabled()) {
+                            enterStandbyMode()
+                        } else {
+                            stopSelf()
+                        }
+                    }
+                    BootReceiver.ACTION_GLSX_ACCON,
+                    BootReceiver.ACTION_FYT_ACCON,
+                    BootReceiver.ACTION_TS_POWER_ON,
+                    BootReceiver.ACTION_QUICKBOOT_POWERON -> {
+                        Log.i(TAG, "Car wake broadcast ($action)")
+                        if (!_isDemoModeFlow.value) {
+                            startBackgroundMonitoring()
+                        }
+                    }
+                }
+            }
+        }
+        systemEventReceiver = receiver
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            addAction(BootReceiver.ACTION_GLSX_ACCON)
+            addAction(BootReceiver.ACTION_FYT_ACCON)
+            addAction(BootReceiver.ACTION_GLSX_ACCOFF)
+            addAction(BootReceiver.ACTION_FYT_ACCOFF)
+            addAction(BootReceiver.ACTION_TS_POWER_ON)
+            addAction(BootReceiver.ACTION_QUICKBOOT_POWERON)
+            addAction(Intent.ACTION_SHUTDOWN)
+        }
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+    }
+
+    private fun unregisterSystemEventReceiver() {
+        systemEventReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+            systemEventReceiver = null
+        }
+    }
+
+    private fun startBackgroundMonitoring(forceRestart: Boolean = false) {
+        if (!forceRestart && !isStandby && pollJob?.isActive == true) {
+            Log.d(TAG, "startBackgroundMonitoring: already active, skipping restart")
+            return
+        }
+        isStandby = false
+        pollJob?.cancel()
+        app.setSessionConnected(false)
         pollJob = serviceScope.launch(Dispatchers.IO) {
             val repo = obdRepository ?: return@launch
             var consecutiveErrors = 0
@@ -273,7 +413,7 @@ class CvtOverlayService : Service() {
                         Log.w(TAG, "Connect failed: $errMsg. Retrying in 5s...")
                         withContext(Dispatchers.Main) {
                             app.updateBtStatus(BtStatus.ERROR)
-                            app.updateConnectionMetrics(latencyMs = null, errorIncrement = true, errorMsg = errMsg)
+                            app.updateConnectionMetrics(latencyMs = null, errorIncrement = app.hasConnectedInSession.value, errorMsg = errMsg)
                             app.updateData(null, null, false, getString(R.string.status_connect_error, errMsg))
                             updateNotificationText(getString(R.string.status_connect_error, errMsg))
                         }
@@ -283,7 +423,9 @@ class CvtOverlayService : Service() {
                     Log.i(TAG, "Connected to OBD adapter!")
                     consecutiveErrors = 0
                     withContext(Dispatchers.Main) {
+                        app.setSessionConnected(true)
                         app.updateBtStatus(BtStatus.CONNECTED)
+                        app.updateConnectionMetrics(latencyMs = null, resetErrors = true)
                     }
 
                     // Automatically read oil degradation once immediately after connection
@@ -326,7 +468,8 @@ class CvtOverlayService : Service() {
                         app.updateData(displayTemp, n, true, getString(R.string.status_ok))
                         val unit = if (activeFormula == CvtTempFormula.RawCount) "cnt" else "°C"
                         val notifText = String.format("CVT: %.1f%s (count %d)", displayTemp, unit, n)
-                        updateNotificationText(notifText)
+                        updateNotificationText(notifText, displayTemp)
+                        broadcastTemperature(displayTemp, n, getString(R.string.status_ok), true)
                     }
                 } catch (e: Exception) {
                     val latencyMs = (System.currentTimeMillis() - queryStartTime).coerceAtLeast(1L)
@@ -337,6 +480,7 @@ class CvtOverlayService : Service() {
                         app.updateBtStatus(BtStatus.ERROR)
                         app.updateConnectionMetrics(latencyMs = latencyMs, errorIncrement = true, errorMsg = errMsg)
                         app.updateData(null, null, true, getString(R.string.status_poll_error, errMsg))
+                        broadcastTemperature(null, null, errMsg, false)
                     }
 
                     if (consecutiveErrors >= 3) {
@@ -345,7 +489,8 @@ class CvtOverlayService : Service() {
                         withContext(Dispatchers.Main) {
                             app.updateBtStatus(BtStatus.ERROR)
                             app.updateData(null, null, false, getString(R.string.status_not_connected))
-                            updateNotificationText(getString(R.string.status_connecting))
+                            updateNotificationText(getString(R.string.status_connecting), lastKnownTemp)
+                            broadcastTemperature(null, null, getString(R.string.status_connecting), false)
                         }
                         delay(2000)
                     }
@@ -396,7 +541,8 @@ class CvtOverlayService : Service() {
                     app.updateConnectionMetrics(latencyMs = 12L)
                     app.updateData(displayTemp, count, true, getString(R.string.screen_main_demo_status))
                     val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
-                    updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, count))
+                    updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, count), displayTemp)
+                    broadcastTemperature(displayTemp, count, "Demo", true)
                 }
 
                 delay(1200L)
@@ -443,7 +589,8 @@ class CvtOverlayService : Service() {
             app.updateConnectionMetrics(latencyMs = 12L, resetErrors = true)
             app.updateData(displayTemp, bestCount, true, getString(R.string.screen_main_demo_status))
             val unit = if (formula == CvtTempFormula.RawCount) "cnt" else "°C"
-            updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, bestCount))
+            updateNotificationText(String.format("CVT Demo: %.1f%s (count %d)", displayTemp, unit, bestCount), displayTemp)
+            broadcastTemperature(displayTemp, bestCount, "Demo", true)
         }
     }
 
@@ -757,6 +904,23 @@ class CvtOverlayService : Service() {
                 obdRepository?.setKlineOptimization(opt, longMsg)
             }
         }
+
+        serviceScope.launch {
+            settings.persistentNotificationFlow.collectLatest { enabled ->
+                if (enabled) {
+                    val status = app.connectionStatus.value
+                    val temp = app.cvtTemp1C.value
+                    startForegroundNotification(status, temp)
+                } else {
+                    if (Build.VERSION.SDK_INT >= 24) {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        stopForeground(true)
+                    }
+                }
+            }
+        }
     }
 
     private fun removeOverlayView() {
@@ -781,8 +945,8 @@ class CvtOverlayService : Service() {
         nm?.createNotificationChannel(channel)
     }
 
-    private fun startForegroundNotification(initialText: String) {
-        val notification = buildForegroundNotification(initialText)
+    private fun startForegroundNotification(initialText: String, temp: Double? = null) {
+        val notification = buildForegroundNotification(initialText, temp)
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(
                 NOTIFICATION_ID,
@@ -794,17 +958,29 @@ class CvtOverlayService : Service() {
         }
     }
 
-    private fun updateNotificationText(text: String) {
+    private fun updateNotificationText(text: String, temp: Double? = null) {
+        val currentTempInt = (temp ?: lastKnownTemp)?.roundToInt()
+        if (text == lastNotifStatusText && currentTempInt == lastNotifTempInt) {
+            return
+        }
+        lastNotifStatusText = text
+        lastNotifTempInt = currentTempInt
+
+        if (!settings.isPersistentNotificationEnabled()) {
+            return
+        }
+
         val nm = getSystemService(NotificationManager::class.java) ?: return
-        val notification = buildForegroundNotification(text)
+        val notification = buildForegroundNotification(text, temp)
         nm.notify(NOTIFICATION_ID, notification)
     }
 
-    private fun buildForegroundNotification(statusText: String): Notification {
-        val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            setPackage(packageName)
-        }
+    private fun buildForegroundNotification(statusText: String, temp: Double? = null): Notification {
+        val openAppIntent = Intent(this, MainActivity::class.java)
+        openAppIntent.component = ComponentName(this, MainActivity::class.java)
+        openAppIntent.setPackage(packageName)
+        openAppIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
         val openApp = PendingIntent.getActivity(
             this,
             0,
@@ -812,10 +988,11 @@ class CvtOverlayService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val stopIntent = Intent(this, CvtOverlayService::class.java).apply {
-            action = ACTION_STOP
-            setPackage(packageName)
-        }
+        val stopIntent = Intent(this, CvtOverlayService::class.java)
+        stopIntent.component = ComponentName(this, CvtOverlayService::class.java)
+        stopIntent.setPackage(packageName)
+        stopIntent.action = ACTION_STOP
+
         val stopPendingIntent = PendingIntent.getService(
             this,
             1,
@@ -823,18 +1000,43 @@ class CvtOverlayService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.overlay_notification_title))
             .setContentText(statusText)
-            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(openApp)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .addAction(0, getString(R.string.screen_main_button_disconnect), stopPendingIntent)
-            .build()
+
+        val displayTemp = temp ?: lastKnownTemp
+        if (displayTemp != null) {
+            val iconCompat = NotificationIconHelper.createTemperatureIcon(this, displayTemp)
+            builder.setSmallIcon(iconCompat)
+        } else {
+            builder.setSmallIcon(R.mipmap.ic_launcher)
+        }
+
+        return builder.build()
+    }
+
+    private fun broadcastTemperature(temp: Double?, rawCount: Int?, status: String, connected: Boolean) {
+        val intent = Intent(ACTION_CVT_TEMP_UPDATE).apply {
+            putExtra(EXTRA_TEMP_CELSIUS, temp ?: -999.0)
+            putExtra(EXTRA_TEMP_INT, temp?.roundToInt() ?: -999)
+            val formatted = if (temp != null) String.format(java.util.Locale.US, "%.1f°C", temp) else "--"
+            putExtra(EXTRA_TEMP_FORMATTED, formatted)
+            putExtra(EXTRA_RAW_COUNT, rawCount ?: -1)
+            putExtra(EXTRA_STATUS, status)
+            putExtra(EXTRA_CONNECTED, connected)
+            putExtra(EXTRA_TIMESTAMP, System.currentTimeMillis())
+            putExtra("temp", temp?.toFloat() ?: -999f)
+            putExtra("temp_cvt", temp?.toFloat() ?: -999f)
+        }
+        sendBroadcast(intent)
     }
 
     override fun onDestroy() {
+        unregisterSystemEventReceiver()
         _isRunningFlow.value = false
         _isDemoModeFlow.value = false
         app.setDemoMode(false)
@@ -844,6 +1046,7 @@ class CvtOverlayService : Service() {
         removeOverlayView()
         obdRepository?.close()
         obdRepository = null
+        app.setSessionConnected(false)
         app.updateData(null, null, false, getString(R.string.screen_main_status_stopped))
         app.updateBtStatus(BtStatus.DISCONNECTED)
         app.updateConnectionMetrics(latencyMs = null)
